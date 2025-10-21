@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "csmock",
+          "semanticVersion": "3.5.0",
+          "rules": [
+            {
+              "id": "CWE-457",
+              "shortDescription": {
+                "text": "Use of uninitialized variable"
+              },
+              "properties": {
+                "cwe": "CWE-457"
+              }
+            },
+            {
+              "id": "SECURITY-001",
+              "shortDescription": {
+                "text": "SQL Injection vulnerability"
+              }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "startTimeUtc": "2024-01-15T10:30:00Z",
+          "endTimeUtc": "2024-01-15T10:35:00Z"
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "CWE-457",
+          "message": {
+            "text": "Using uninitialized value 'errsave' when calling 'strerror'"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.c"
+                },
+                "region": {
+                  "startLine": 42,
+                  "endLine": 42,
+                  "snippet": {
+                    "text": "char *msg = strerror(errsave);"
+                  }
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "csdiff/v0": "55ebf10003c842e4a2030da5ab067b1d8087cc9a",
+            "csdiff/v1": "2fa0ad587f4795fc6c8fb440da205625be0bb095"
+          }
+        },
+        {
+          "ruleId": "SECURITY-001",
+          "message": {
+            "text": "Potential SQL injection vulnerability detected"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/database.c"
+                },
+                "region": {
+                  "startLine": 128,
+                  "endLine": 130
+                }
+              }
+            }
+          ],
+          "properties": {
+            "cwe": "CWE-89"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "abc123def456"
+          }
+        },
+        {
+          "ruleId": "INFO-001",
+          "message": {
+            "text": "Code style issue: long line detected"
+          },
+          "level": "note"
+        }
+      ]
+    }
+  ]
+}
+
+
