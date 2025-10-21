@@ -1,0 +1,5 @@
+# CODEOWNERS file for boann-ocsf-security-data-platform
+# This file defines who will be automatically requested as reviewers for PRs
+
+# All files in the repository
+* @RedHatProductSecurity/boann-admins
