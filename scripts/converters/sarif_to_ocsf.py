@@ -21,11 +21,23 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
     """
     Converts SARIF format security findings to OCSF format.
 
-    Example:
+    By default, automatically generates finding UIDs using the FindingUIDGenerator
+    enrichment with the 'boann' prefix. This can be disabled if downstream implementations
+    want to provide their own UID generation logic.
+
+    Examples:
+        # Default usage (UID generation enabled with 'boann' prefix)
+        converter = SARIFToOCSFConverter()
+        ocsf_findings = converter.convert_file('scan.sarif')
+        # UIDs: boann:sast:tool:fingerprint-v1:hash...
+
+        # Disable automatic UID generation
+        converter = SARIFToOCSFConverter(enable_uid_generation=False)
+
+        # Add custom enrichments alongside default UID generation
         converter = SARIFToOCSFConverter(
             enrichments=[MyEnrichment()]
         )
-        ocsf_findings = converter.convert_file('scan.sarif')
     """
 
     # Severity mapping from SARIF level to OCSF
@@ -37,6 +49,42 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         'note': {'id': 2, 'name': 'Informational'},
         'none': {'id': 1, 'name': 'Unknown'},
     }
+
+    def __init__(
+        self,
+        enrichments: Optional[List] = None,
+        enable_uid_generation: bool = True,
+        sdlc_type: str = 'sast'
+    ):
+        """
+        Initialize the SARIF to OCSF converter.
+
+        Args:
+            enrichments: Additional enrichments to apply (beyond default UID generation)
+            enable_uid_generation: If True, automatically generates finding UIDs (default: True)
+            sdlc_type: SDLC type for generated UIDs (default: 'sast')
+        """
+        # Import here to avoid circular dependencies
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from enrichments import FindingUIDGenerator
+
+        # Build enrichments list
+        all_enrichments = []
+
+        # Add default UID generator if enabled
+        if enable_uid_generation:
+            uid_generator = FindingUIDGenerator(sdlc_type=sdlc_type)
+            all_enrichments.append(uid_generator)
+            logger.debug(f"UID generation enabled with sdlc_type='{sdlc_type}'")
+
+        # Add user-provided enrichments
+        if enrichments:
+            all_enrichments.extend(enrichments)
+
+        # Initialize base converter with all enrichments
+        super().__init__(enrichments=all_enrichments)
 
     def convert_file(self, input_path: str) -> List[Dict[str, Any]]:
         """
@@ -84,8 +132,10 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
                     ocsf_findings.append(ocsf_finding)
                 except Exception as e:
-                    logger.error(f"Failed to convert SARIF result: {e}", exc_info=True)
-                    # Continue processing other results
+                    logger.error(
+                        f"Failed to convert SARIF result: {e}",
+                        exc_info=logger.isEnabledFor(logging.DEBUG)
+                    )
 
         logger.info(f"Converted {len(ocsf_findings)} findings from SARIF file")
         return ocsf_findings
@@ -267,7 +317,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
                     desc = snippet
 
         finding_info = {
-            'uid': 'PLACEHOLDER_UID',  # TODO: Implement final UID generation strategy
+            'uid': 'PLACEHOLDER_UID',  # Will be replaced by FindingUIDGenerator enrichment
             'title': title,
             'desc': desc,
             'created_time': created_time,

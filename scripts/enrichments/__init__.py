@@ -7,5 +7,6 @@ modifying core converter logic.
 """
 
 from .base import EnrichmentPlugin
+from .finding_uid_generator import FindingUIDGenerator
 
-__all__ = ['EnrichmentPlugin']
+__all__ = ['EnrichmentPlugin', 'FindingUIDGenerator']
