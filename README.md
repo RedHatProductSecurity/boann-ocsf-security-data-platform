@@ -68,7 +68,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 This is an initial upstream release with the following known limitations:
 
 - Not all SARIF fields are converted
-- Database schema must be created separately (managed by dbt)
+- Database schema must be created separately (dbt management tooling planned but not yet available)
 - API and data formats subject to change
 - Downstream enrichment required for organization-specific data
 

@@ -106,9 +106,18 @@ python sarif_to_ocsf.py input.sarif output.json --enrichment-dir ./my_enrichment
 
 Generates stable unique finding UIDs for deduplication.
 
-- **Format**: `boann:sast:<tool>:<type>:<hash>`
-- **Type**: `fingerprint` (preferred) or `hash` (fallback)
+- **Format**: `boann:<sdlc-type>:<tool>:<uid-type>:<hash>`
+- **UID Type**: `fingerprint` (preferred) or `hash` (fallback)
 - **Enabled by default** in SARIFToOCSFConverter
+
+Examples:
+```
+# Fingerprint-based (when SARIF fingerprints available)
+boann:sast:snyk:fingerprint:7f3e9c8b2a1d4f6e...
+
+# Hash-based (fallback when no fingerprints)
+boann:sast:bandit:hash:a3f5e2c1b8d9...
+```
 
 See [SARIF to OCSF Conversion](../docs/SARIF_to_OCSF.md) for details.
 
