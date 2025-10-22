@@ -1,0 +1,5 @@
+# Development and testing dependencies
+-r requirements.txt
+
+# Testing
+pytest~=8.4.2
