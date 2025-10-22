@@ -1,0 +1,6 @@
+# Database ingestion dependencies
+python-dotenv~=1.1.1
+SQLAlchemy~=2.0.41
+
+# SQLAlchemy requires manual installation of database drivers
+psycopg2-binary~=2.9.10
