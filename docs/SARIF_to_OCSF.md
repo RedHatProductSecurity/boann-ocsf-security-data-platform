@@ -37,7 +37,7 @@ activity_name: Update
 activity_id: 2
 
 finding_info:
-  uid: PLACEHOLDER_UID    # Will be replaced with actual UID generation strategy
+  uid: boann:sast:csmock:fingerprint:2fa0ad587f4795fc6c8fb440da205625be0bb095
   title: "CWE-457: Use of uninitialized variable"
   desc: "Using uninitialized value 'errsave' when calling 'strerror'"
   created_time: 1705314600000
@@ -62,6 +62,11 @@ enrichments:
     data:
       csdiff/v0: 55ebf10003c842e4a2030da5ab067b1d8087cc9a
       csdiff/v1: 2fa0ad587f4795fc6c8fb440da205625be0bb095
+  - name: uid_generation
+    data:
+      method: fingerprint
+      version: v1
+      algorithm: sha256
 
 time: 1705314600000
 type_uid: 200702
@@ -116,9 +121,12 @@ The converter extracts information about the scanning tool from SARIF:
   - Uses `runs[x].invocations[].startTimeUtc` converted to milliseconds since 1970
   - If not available, uses current time
 
-- **finding_info.uid**: Currently set to "PLACEHOLDER_UID"
-  - Final UID generation strategy is still being decided
-  - Will follow the format: `boann:sast:<tool-name>:<type>:<value>`
+- **finding_info.uid**: Generated using FindingUIDGenerator enrichment plugin
+  - Format: `boann:sast:<tool-name>:<type>:<value>`
+  - Type can be `fingerprint` (when SARIF fingerprints exist) or `hash` (fallback)
+  - Value is a SHA-256 hash
+  - Example: `boann:sast:snyk:fingerprint:7f3e9c8b2a1d...`
+  - Version information is stored separately in enrichments for UID stability
 
 ### Vulnerability Details
 
@@ -134,7 +142,9 @@ If the SARIF result includes CWE or location information, this is added:
   - **start_line**: Starting line number
   - **end_line**: Ending line number
 
-### Enrichments (Fingerprints)
+### Enrichments
+
+#### Fingerprints
 
 SARIF files can include fingerprints that help track the same finding across multiple scans.
 
@@ -147,16 +157,28 @@ The converter saves these fingerprints as enrichments:
   - Can come from `result.fingerprints` or `result.partialFingerprints`
   - Example: `{"csdiff/v0": "55ebf100...", "csdiff/v1": "2fa0ad58..."}`
 
+#### UID Generation Metadata
+
+When the FindingUIDGenerator plugin is used, it adds metadata about how the UID was generated:
+
+- **enrichments[1].name**: "uid_generation"
+- **enrichments[1].data.method**: Generation method (`fingerprint` or `hash`)
+- **enrichments[1].data.version**: Version of the generation logic (e.g., `v1`)
+- **enrichments[1].data.algorithm**: Hash algorithm used (e.g., `sha256`)
+
+This metadata provides traceability without coupling the version to the UID itself, ensuring UID stability across future changes to generation logic.
+
 ## What is NOT Converted (Requires Downstream Enrichment)
 
 The upstream converter focuses on basic, general fields. These fields are not included and should be added during downstream enrichment:
 
-- **Finding UID generation** - Currently uses "PLACEHOLDER_UID".
 - **Source URL** (`finding_info.src_url`) - **Downstream should add a link to where the original SARIF report is stored.** This allows users to access all the detailed information that was excluded from the conversion (like code flows and column positions).
 - **Product and package information** - Organization-specific data about which products and packages are affected. This requires access to build systems or product catalogs.
 - **Advanced enrichments** - Organization-specific metadata like SDLC source type (e.g., "Static Application Security Testing (SAST)").
 
 **Why separate upstream and downstream?** The upstream converter remains general and works for any organization using SARIF files. Each organization can then add their own specific information through enrichment plugins during downstream processing.
+
+**Note**: Finding UID generation is handled by the FindingUIDGenerator enrichment plugin and should be configured during the conversion process to ensure proper deduplication.
 
 ## Time Format
 

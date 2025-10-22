@@ -56,9 +56,16 @@ def test_fingerprint_based_uid_generation(sast_enrichment):
     # Should use latest fingerprint (key '1')
     expected_fingerprint = '424eddda.9bf9da8e.8d277033.1c2a3430.c9c1f9d4.6c8feca2.f563e0a5.1f55c1aa'
     expected_hash = hashlib.sha256(expected_fingerprint.encode('utf-8')).hexdigest()
-    expected_uid = f'boann:sast:snyk:fingerprint-v1:{expected_hash}'
+    expected_uid = f'boann:sast:snyk:fingerprint:{expected_hash}'
 
     assert result['finding_info']['uid'] == expected_uid
+
+    # Verify uid_generation enrichment was added
+    uid_enrichment = next((e for e in result['enrichments'] if e.get('name') == 'uid_generation'), None)
+    assert uid_enrichment is not None
+    assert uid_enrichment['data']['method'] == 'fingerprint'
+    assert uid_enrichment['data']['version'] == 'v1'
+    assert uid_enrichment['data']['algorithm'] == 'sha256'
 
 
 def test_hash_based_uid_generation(sast_enrichment):
@@ -94,9 +101,16 @@ def test_hash_based_uid_generation(sast_enrichment):
     message_text = 'SQL injection vulnerability detected'
     hash_input = '\n'.join([title, file_uri, message_text])
     expected_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
-    expected_uid = f'boann:sast:bandit:hash-v1:{expected_hash}'
+    expected_uid = f'boann:sast:bandit:hash:{expected_hash}'
 
     assert result['finding_info']['uid'] == expected_uid
+
+    # Verify uid_generation enrichment was added
+    uid_enrichment = next((e for e in result.get('enrichments', []) if e.get('name') == 'uid_generation'), None)
+    assert uid_enrichment is not None
+    assert uid_enrichment['data']['method'] == 'hash'
+    assert uid_enrichment['data']['version'] == 'v1'
+    assert uid_enrichment['data']['algorithm'] == 'sha256'
 
 
 def test_fingerprint_selection_alphabetical_order(sast_enrichment):
@@ -128,7 +142,7 @@ def test_fingerprint_selection_alphabetical_order(sast_enrichment):
 
     # Should select 'csdiff/v2' (alphabetically last)
     expected_hash = hashlib.sha256('hash2'.encode('utf-8')).hexdigest()
-    expected_uid = f'boann:sast:testtool:fingerprint-v1:{expected_hash}'
+    expected_uid = f'boann:sast:testtool:fingerprint:{expected_hash}'
 
     assert result['finding_info']['uid'] == expected_uid
 
@@ -306,7 +320,7 @@ def test_hash_generation_with_empty_fields(sast_enrichment):
 
     # Should still generate a UID even with empty fields
     assert result['finding_info']['uid'] is not None
-    assert ':hash-v1:' in result['finding_info']['uid']
+    assert ':hash:' in result['finding_info']['uid']
 
 
 def test_error_handling_invalid_finding(sast_enrichment):
@@ -377,7 +391,7 @@ def test_empty_fingerprints_falls_back_to_hash(sast_enrichment):
     result = sast_enrichment.enrich(finding)
 
     # Should fall back to hash-based approach
-    assert ':hash-v1:' in result['finding_info']['uid']
+    assert ':hash:' in result['finding_info']['uid']
 
 
 def test_get_name(sast_enrichment):

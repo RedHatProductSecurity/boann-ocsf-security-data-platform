@@ -34,15 +34,15 @@ class FindingUIDGenerator(EnrichmentPlugin):
     UID Format: boann:<sdlc-type>:<tool>:<uid-type>:<uid-unique-to-the-tool>
 
     SAST (default implementation):
-    - With fingerprints: boann:sast:<tool>:fingerprint-v1:<sha256-hash>
-    - Without fingerprints: boann:sast:<tool>:hash-v1:<sha256-hash>
+    - With fingerprints: boann:sast:<tool>:fingerprint:<sha256-hash>
+    - Without fingerprints: boann:sast:<tool>:hash:<sha256-hash>
 
     Examples:
         >>> # SAST (default) - automatic fingerprint/hash-based UID
         >>> enrichment = FindingUIDGenerator(sdlc_type='sast')
         >>> finding = enrichment.enrich(finding)
         >>> finding['finding_info']['uid']
-        'boann:sast:snyk:fingerprint-v1:7f3e9c8b2a1d...'
+        'boann:sast:snyk:fingerprint:7f3e9c8b2a1d...'
 
         >>> # Custom SDLC type (e.g., pentest) - provide custom logic
         >>> def pentest_uid_generator(finding):
@@ -55,10 +55,6 @@ class FindingUIDGenerator(EnrichmentPlugin):
         ... )
         >>> # Result: boann:pentest:jira:key:RHEL-12345
     """
-
-    # UID type versions for SAST
-    FINGERPRINT_VERSION = 'v1'
-    HASH_VERSION = 'v1'
 
     def __init__(
         self,
@@ -133,6 +129,9 @@ class FindingUIDGenerator(EnrichmentPlugin):
         1. Try fingerprint-based approach (if fingerprints available)
         2. Fallback to hash-based approach
 
+        Version information is stored in enrichments, not in the UID itself,
+        to ensure UID stability across future changes to generation logic.
+
         Args:
             finding: OCSF finding
 
@@ -144,13 +143,13 @@ class FindingUIDGenerator(EnrichmentPlugin):
         # Try fingerprint-based approach first
         fingerprint_hash = self._try_fingerprint_approach(finding)
         if fingerprint_hash:
-            uid_type = f"fingerprint-{self.FINGERPRINT_VERSION}"
-            return f"{self.uid_prefix}:{self.sdlc_type}:{tool_name}:{uid_type}:{fingerprint_hash}"
+            self._add_uid_generation_metadata(finding, method='fingerprint', version='v1')
+            return f"{self.uid_prefix}:{self.sdlc_type}:{tool_name}:fingerprint:{fingerprint_hash}"
 
         # Fallback to hash-based approach
         hash_value = self._hash_based_approach(finding)
-        uid_type = f"hash-{self.HASH_VERSION}"
-        return f"{self.uid_prefix}:{self.sdlc_type}:{tool_name}:{uid_type}:{hash_value}"
+        self._add_uid_generation_metadata(finding, method='hash', version='v1')
+        return f"{self.uid_prefix}:{self.sdlc_type}:{tool_name}:hash:{hash_value}"
 
     def _normalize_name(self, name: str) -> str:
         """
@@ -302,6 +301,39 @@ class FindingUIDGenerator(EnrichmentPlugin):
             Hexadecimal SHA-256 hash
         """
         return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+    def _add_uid_generation_metadata(
+        self,
+        finding: Dict[str, Any],
+        method: str,
+        version: str
+    ) -> None:
+        """
+        Add UID generation metadata to finding enrichments.
+
+        This provides traceability for how the UID was generated without
+        coupling the version to the UID itself.
+
+        Args:
+            finding: OCSF finding to enrich
+            method: Generation method ('fingerprint' or 'hash')
+            version: Version of the generation logic
+        """
+        if 'enrichments' not in finding:
+            finding['enrichments'] = []
+
+        # Add uid_generation enrichment
+        uid_metadata = {
+            'name': 'uid_generation',
+            'data': {
+                'method': method,
+                'version': version,
+                'algorithm': 'sha256'
+            }
+        }
+
+        finding['enrichments'].append(uid_metadata)
+        logger.debug(f"Added UID generation metadata: method={method}, version={version}")
 
     def get_name(self) -> str:
         """Get plugin name."""
