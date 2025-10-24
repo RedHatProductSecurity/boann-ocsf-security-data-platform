@@ -6,7 +6,7 @@
 
 ## Overview
 
-The Boann OCSF Security Data Platform provides tools and converters for processing security findings into the OCSF (Open Cybersecurity Schema Framework) format. This upstream platform serves as a foundation for ingesting, converting, and enriching security data from various sources.
+The Boann OCSF Security Data Platform provides tools and converters for processing security findings into the OCSF (Open Cybersecurity Schema Framework) format. This platform serves as a foundation for ingesting, converting, and enriching security data from various sources.
 
 ## Features
 
@@ -65,7 +65,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Status and Limitations
 
-This is an initial upstream release with the following known limitations:
+This is an initial release with the following known limitations:
 
 - Not all SARIF fields are converted
 - Database schema must be created separately (dbt management tooling planned but not yet available)

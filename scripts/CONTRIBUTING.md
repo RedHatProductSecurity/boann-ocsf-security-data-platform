@@ -132,7 +132,7 @@ The `perform_conversion()` method allows flexibility in how conversion happens -
 
 Run all tests:
 ```bash
-cd upstream/scripts
+cd scripts
 python -m unittest discover -s tests -p "test_*.py"
 ```
 

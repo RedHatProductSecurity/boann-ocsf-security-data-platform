@@ -1,3 +1,3 @@
-"""Tests for upstream SARIF to OCSF converter."""
+"""Tests for SARIF to OCSF converter."""
 
 
