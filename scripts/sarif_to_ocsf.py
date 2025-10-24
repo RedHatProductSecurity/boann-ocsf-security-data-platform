@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SARIF to OCSF Converter Script (Upstream)
+SARIF to OCSF Converter Script
 
 Basic converter script that transforms SARIF files to OCSF format.
 Community users can extend this with their own enrichments.

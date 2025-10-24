@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Raw Ingestion Layer for OCSF data (Upstream Version)
+Raw Ingestion Layer for OCSF data
 
 This module provides a class-based interface for ingesting OCSF JSON files into PostgreSQL.
 Can be used as a library (imported by other scripts) or as a standalone CLI tool.
