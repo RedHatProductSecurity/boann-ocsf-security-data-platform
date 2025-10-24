@@ -137,6 +137,30 @@ scripts/
 └── ocsf_monitor.py         # Directory monitoring CLI
 ```
 
+## Development Setup
+
+### Using venv and pip
+
+For development and testing:
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dependencies for development and testing
+pip install -r requirements-dev.txt
+```
+
+For running scripts only:
+
+```bash
+# Install runtime dependencies only
+pip install -r requirements.txt
+```
+
 ## Environment Configuration
 
 For database ingestion, configure connection in `.env`:
