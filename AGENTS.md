@@ -64,7 +64,7 @@ Before writing a test, check if existing tests already validate the same behavio
 - Does it test a different edge case or scenario?
 - Would removing this test reduce confidence in a specific behavior?
 
-If the answer is no to all three, the test is likely redundant.
+If the answer is no to all three, the test is redundant.
 
 **Rules:**
 - One test per distinct behavior or scenario
@@ -83,13 +83,13 @@ pytest scripts/tests/test_sarif_converter.py --cov=scripts/converters --cov-repo
 ### What to Test
 
 **DO test:**
-- SARIF to OCSF field mappings and transformations
-- Enrichment plugin discovery and execution
-- Finding UID generation for deduplication
-- Database upsert logic
-- Edge cases (null, empty, boundary values)
-- Error handling and validation
-- Configuration from different sources (environment, config file, defaults)
+- Business logic and domain-specific functionality
+- Data transformations and conversions (e.g., format conversions, field mappings)
+- Plugin and extension systems (discovery, instantiation, execution)
+- Database operations (inserts, updates, upserts, queries)
+- Edge cases (null, empty, boundary values, missing fields)
+- Error handling and validation (invalid input, missing files, connection failures)
+- Configuration from different sources (environment variables, config files, defaults, fallbacks)
 
 **DON'T test:**
 - Python language features (immutability, determinism)
