@@ -261,6 +261,47 @@ class TestSARIFConverterMethods:
         assert converter.ACTIVITY_NAME == 'Update'
         assert converter.OCSF_VERSION == '1.5.0'
 
+    def test_convert_file_nonexistent_raises_error(self, converter):
+        """Test that converting nonexistent file raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError) as exc_info:
+            converter.convert_file('/nonexistent/path/to/file.sarif')
+
+        assert 'not found' in str(exc_info.value)
+
+    def test_extract_created_time_with_invalid_timestamp(self, converter):
+        """Test created time extraction with invalid timestamp format."""
+        run = {
+            'invocations': [
+                {'startTimeUtc': 'invalid-timestamp-format'}
+            ]
+        }
+        created_time = converter._extract_created_time(run)
+
+        # Should fallback to current time (epoch timestamp in milliseconds)
+        assert isinstance(created_time, int)
+        assert created_time > 0
+
+    def test_extract_created_time_with_valid_timestamp(self, converter):
+        """Test created time extraction with valid ISO 8601 timestamp."""
+        run = {
+            'invocations': [
+                {'startTimeUtc': '2024-01-15T10:30:00Z'}
+            ]
+        }
+        created_time = converter._extract_created_time(run)
+
+        # Verify the timestamp was parsed correctly (epoch in milliseconds)
+        assert created_time == 1705314600000
+
+    def test_extract_created_time_fallback_to_current_time(self, converter):
+        """Test created time extraction falls back to current time when no invocations."""
+        run = {}
+        created_time = converter._extract_created_time(run)
+
+        # Should return current time as epoch timestamp in milliseconds
+        assert isinstance(created_time, int)
+        assert created_time > 0
+
 
 class TestSARIFIntegration(unittest.TestCase):
     """Integration tests for the full SARIF converter with enrichments."""

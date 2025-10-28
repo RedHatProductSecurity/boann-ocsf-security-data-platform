@@ -3,3 +3,4 @@
 
 # Testing
 pytest~=8.4.2
+pytest-cov~=6.0.0
