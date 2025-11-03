@@ -7,12 +7,11 @@ to OCSF (Open Cybersecurity Schema Framework) format.
 
 import json
 import logging
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from .base_converter import BaseOCSFConverter
-
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +43,17 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
     # SARIF levels: none, note, warning, error
     # OCSF severity IDs: 1=Unknown, 2=Informational, 3=Low, 4=Medium, 5=High, 6=Critical, 7=Fatal, 99=Other
     SEVERITY_MAP = {
-        'error': {'id': 5, 'name': 'High'},
-        'warning': {'id': 4, 'name': 'Medium'},
-        'note': {'id': 2, 'name': 'Informational'},
-        'none': {'id': 1, 'name': 'Unknown'},
+        "error": {"id": 5, "name": "High"},
+        "warning": {"id": 4, "name": "Medium"},
+        "note": {"id": 2, "name": "Informational"},
+        "none": {"id": 1, "name": "Unknown"},
     }
 
     def __init__(
         self,
-        enrichments: Optional[List] = None,
+        enrichments: list | None = None,
         enable_uid_generation: bool = True,
-        sdlc_type: str = 'sast'
+        sdlc_type: str = "sast",
     ):
         """
         Initialize the SARIF to OCSF converter.
@@ -65,9 +64,10 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             sdlc_type: SDLC type for generated UIDs (default: 'sast')
         """
         # Import here to avoid circular dependencies
-        import sys
         import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        import sys
+
+        sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
         from enrichments import FindingUIDGenerator
 
         # Build enrichments list
@@ -86,7 +86,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         # Initialize base converter with all enrichments
         super().__init__(enrichments=all_enrichments)
 
-    def convert_file(self, input_path: str) -> List[Dict[str, Any]]:
+    def convert_file(self, input_path: str) -> list[dict[str, Any]]:
         """
         Convert a SARIF file to OCSF format.
 
@@ -103,13 +103,13 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
         logger.info(f"Converting SARIF file: {input_path}")
 
-        with open(input_path, 'r', encoding='utf-8') as f:
+        with open(input_path, encoding="utf-8") as f:
             sarif_data = json.load(f)
 
         ocsf_findings = []
 
         # Process each run in the SARIF file
-        for run in sarif_data.get('runs', []):
+        for run in sarif_data.get("runs", []):
             # Extract tool metadata once per run
             tool_metadata = self._extract_tool_metadata(run)
             created_time = self._extract_created_time(run)
@@ -118,14 +118,9 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             rules_lookup = self._build_rules_lookup(run)
 
             # Process each result (finding)
-            for result in run.get('results', []):
+            for result in run.get("results", []):
                 try:
-                    ocsf_finding = self._convert_result(
-                        result,
-                        tool_metadata,
-                        created_time,
-                        rules_lookup
-                    )
+                    ocsf_finding = self._convert_result(result, tool_metadata, created_time, rules_lookup)
 
                     # Apply enrichments
                     ocsf_finding = self.apply_enrichments(ocsf_finding)
@@ -134,7 +129,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
                 except Exception as e:
                     logger.error(
                         f"Failed to convert SARIF result: {e}",
-                        exc_info=logger.isEnabledFor(logging.DEBUG)
+                        exc_info=logger.isEnabledFor(logging.DEBUG),
                     )
 
         logger.info(f"Converted {len(ocsf_findings)} findings from SARIF file")
@@ -142,11 +137,11 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
     def _convert_result(
         self,
-        result: Dict[str, Any],
-        tool_metadata: Dict[str, Any],
+        result: dict[str, Any],
+        tool_metadata: dict[str, Any],
         created_time: int,
-        rules_lookup: Dict[str, Dict]
-    ) -> Dict[str, Any]:
+        rules_lookup: dict[str, dict],
+    ) -> dict[str, Any]:
         """
         Convert a single SARIF result to an OCSF finding.
 
@@ -173,33 +168,33 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
         # Build OCSF finding
         ocsf_finding = {
-            'class_name': self.CLASS_NAME,
-            'class_uid': self.CLASS_UID,
-            'category_uid': self.CATEGORY_UID,
-            'category_name': self.CATEGORY_NAME,
-            'activity_id': self.ACTIVITY_ID,
-            'activity_name': self.ACTIVITY_NAME,
-            'type_uid': self.CLASS_UID * 100 + self.ACTIVITY_ID,  # 200702
-            'time': int(datetime.now().timestamp() * 1000),
-            'severity_id': severity['id'],
-            'severity': severity['name'],
-            'metadata': {
-                'product': tool_metadata,
-                'version': self.OCSF_VERSION,
+            "class_name": self.CLASS_NAME,
+            "class_uid": self.CLASS_UID,
+            "category_uid": self.CATEGORY_UID,
+            "category_name": self.CATEGORY_NAME,
+            "activity_id": self.ACTIVITY_ID,
+            "activity_name": self.ACTIVITY_NAME,
+            "type_uid": self.CLASS_UID * 100 + self.ACTIVITY_ID,  # 200702
+            "time": int(datetime.now().timestamp() * 1000),
+            "severity_id": severity["id"],
+            "severity": severity["name"],
+            "metadata": {
+                "product": tool_metadata,
+                "version": self.OCSF_VERSION,
             },
-            'finding_info': finding_info,
+            "finding_info": finding_info,
         }
 
         # Add optional fields if present
         if vulnerabilities:
-            ocsf_finding['vulnerabilities'] = [vulnerabilities]
+            ocsf_finding["vulnerabilities"] = [vulnerabilities]
 
         if enrichments:
-            ocsf_finding['enrichments'] = enrichments
+            ocsf_finding["enrichments"] = enrichments
 
         return ocsf_finding
 
-    def _extract_tool_metadata(self, run: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_tool_metadata(self, run: dict[str, Any]) -> dict[str, Any]:
         """
         Extract tool name and version from SARIF run.
 
@@ -209,20 +204,20 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         Returns:
             Dictionary with 'name' and 'version' keys
         """
-        tool = run.get('tool', {}).get('driver', {})
+        tool = run.get("tool", {}).get("driver", {})
 
         metadata = {
-            'name': tool.get('name', 'Unknown'),
+            "name": tool.get("name", "Unknown"),
         }
 
         # Try semanticVersion first, fallback to version
-        version = tool.get('semanticVersion') or tool.get('version')
+        version = tool.get("semanticVersion") or tool.get("version")
         if version:
-            metadata['version'] = version
+            metadata["version"] = version
 
         return metadata
 
-    def _extract_created_time(self, run: Dict[str, Any]) -> int:
+    def _extract_created_time(self, run: dict[str, Any]) -> int:
         """
         Extract finding creation time from SARIF run.
 
@@ -233,13 +228,13 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             Unix epoch timestamp in milliseconds
         """
         # Try to get from invocations[].startTimeUtc
-        invocations = run.get('invocations', [])
+        invocations = run.get("invocations", [])
         for invocation in invocations:
-            start_time = invocation.get('startTimeUtc')
+            start_time = invocation.get("startTimeUtc")
             if start_time:
                 try:
                     # Parse ISO 8601 timestamp
-                    dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                    dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
                     return int(dt.timestamp() * 1000)
                 except Exception as e:
                     logger.warning(f"Failed to parse timestamp {start_time}: {e}")
@@ -247,7 +242,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         # Fallback to current time
         return int(datetime.now().timestamp() * 1000)
 
-    def _build_rules_lookup(self, run: Dict[str, Any]) -> Dict[str, Dict]:
+    def _build_rules_lookup(self, run: dict[str, Any]) -> dict[str, dict]:
         """
         Build a lookup dictionary for rules by ID.
 
@@ -258,16 +253,16 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             Dictionary mapping rule IDs to rule objects
         """
         rules_lookup = {}
-        rules = run.get('tool', {}).get('driver', {}).get('rules', [])
+        rules = run.get("tool", {}).get("driver", {}).get("rules", [])
 
         for rule in rules:
-            rule_id = rule.get('id')
+            rule_id = rule.get("id")
             if rule_id:
                 rules_lookup[rule_id] = rule
 
         return rules_lookup
 
-    def _extract_severity(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_severity(self, result: dict[str, Any]) -> dict[str, Any]:
         """
         Extract and map SARIF level to OCSF severity.
 
@@ -277,15 +272,12 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         Returns:
             Dictionary with 'id' and 'name' keys
         """
-        level = result.get('level', 'none')
-        return self.SEVERITY_MAP.get(level, self.SEVERITY_MAP['none'])
+        level = result.get("level", "none")
+        return self.SEVERITY_MAP.get(level, self.SEVERITY_MAP["none"])
 
     def _extract_finding_info(
-        self,
-        result: Dict[str, Any],
-        created_time: int,
-        rules_lookup: Dict[str, Dict]
-    ) -> Dict[str, Any]:
+        self, result: dict[str, Any], created_time: int, rules_lookup: dict[str, dict]
+    ) -> dict[str, Any]:
         """
         Extract finding_info from SARIF result.
 
@@ -297,39 +289,35 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         Returns:
             finding_info dictionary
         """
-        rule_id = result.get('ruleId', 'Unknown')
+        rule_id = result.get("ruleId", "Unknown")
 
         # Build title from ruleId + optional shortDescription
         title = rule_id
         rule = rules_lookup.get(rule_id, {})
-        short_desc = rule.get('shortDescription', {}).get('text')
+        short_desc = rule.get("shortDescription", {}).get("text")
         if short_desc:
             title = f"{rule_id}: {short_desc}"
 
         # Build description from message.text or snippet.text
-        desc = result.get('message', {}).get('text', '')
+        desc = result.get("message", {}).get("text", "")
         if not desc:
             # Try to get from snippet
-            locations = result.get('locations', [])
+            locations = result.get("locations", [])
             if locations:
-                snippet = locations[0].get('physicalLocation', {}).get('region', {}).get('snippet', {}).get('text')
+                snippet = locations[0].get("physicalLocation", {}).get("region", {}).get("snippet", {}).get("text")
                 if snippet:
                     desc = snippet
 
         finding_info = {
-            'uid': 'PLACEHOLDER_UID',  # Will be replaced by FindingUIDGenerator enrichment
-            'title': title,
-            'desc': desc,
-            'created_time': created_time,
+            "uid": "PLACEHOLDER_UID",  # Will be replaced by FindingUIDGenerator enrichment
+            "title": title,
+            "desc": desc,
+            "created_time": created_time,
         }
 
         return finding_info
 
-    def _extract_vulnerabilities(
-        self,
-        result: Dict[str, Any],
-        rules_lookup: Dict[str, Dict]
-    ) -> Optional[Dict[str, Any]]:
+    def _extract_vulnerabilities(self, result: dict[str, Any], rules_lookup: dict[str, dict]) -> dict[str, Any] | None:
         """
         Extract vulnerability information from SARIF result.
 
@@ -343,47 +331,47 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         vulnerability = {}
 
         # Extract CWE
-        rule_id = result.get('ruleId')
+        rule_id = result.get("ruleId")
 
         # Try result.properties.cwe first
-        cwe = result.get('properties', {}).get('cwe')
+        cwe = result.get("properties", {}).get("cwe")
 
         # Fallback to rule.properties.cwe
         if not cwe and rule_id:
             rule = rules_lookup.get(rule_id, {})
-            cwe = rule.get('properties', {}).get('cwe')
+            cwe = rule.get("properties", {}).get("cwe")
 
         if cwe:
             # Handle multiple CWEs by joining them
             if isinstance(cwe, list):
-                cwe = ', '.join(str(c) for c in cwe)
-            vulnerability['cwe'] = {'uid': str(cwe)}
+                cwe = ", ".join(str(c) for c in cwe)
+            vulnerability["cwe"] = {"uid": str(cwe)}
 
         # Extract affected_code
-        locations = result.get('locations', [])
+        locations = result.get("locations", [])
         if locations:
-            physical_location = locations[0].get('physicalLocation', {})
-            artifact_location = physical_location.get('artifactLocation', {})
-            region = physical_location.get('region', {})
+            physical_location = locations[0].get("physicalLocation", {})
+            artifact_location = physical_location.get("artifactLocation", {})
+            region = physical_location.get("region", {})
 
-            file_path = artifact_location.get('uri')
-            start_line = region.get('startLine')
-            end_line = region.get('endLine')
+            file_path = artifact_location.get("uri")
+            start_line = region.get("startLine")
+            end_line = region.get("endLine")
 
             if file_path or start_line or end_line:
                 affected_code = {}
                 if file_path:
-                    affected_code['file'] = file_path
+                    affected_code["file"] = file_path
                 if start_line:
-                    affected_code['start_line'] = start_line
+                    affected_code["start_line"] = start_line
                 if end_line:
-                    affected_code['end_line'] = end_line
+                    affected_code["end_line"] = end_line
 
-                vulnerability['affected_code'] = affected_code
+                vulnerability["affected_code"] = affected_code
 
         return vulnerability if vulnerability else None
 
-    def _extract_enrichments(self, result: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+    def _extract_enrichments(self, result: dict[str, Any]) -> list[dict[str, Any]] | None:
         """
         Extract enrichments (fingerprints) from SARIF result.
 
@@ -393,14 +381,16 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         Returns:
             List of enrichment dictionaries or None if no fingerprints
         """
-        fingerprints = result.get('fingerprints') or result.get('partialFingerprints')
+        fingerprints = result.get("fingerprints") or result.get("partialFingerprints")
 
         if not fingerprints:
             return None
 
-        return [{
-            'name': 'fingerprints',
-            'value': 'SARIF fingerprints',
-            'type': 'fingerprints',
-            'data': fingerprints
-        }]
+        return [
+            {
+                "name": "fingerprints",
+                "value": "SARIF fingerprints",
+                "type": "fingerprints",
+                "data": fingerprints,
+            }
+        ]

@@ -128,6 +128,31 @@ The `perform_conversion()` method allows flexibility in how conversion happens -
 
 **Note**: The base class automatically adds `output_file` as the last positional argument - you only need to define your converter-specific positional arguments.
 
+## Code Quality
+
+This project uses pre-commit hooks to ensure code quality with Ruff linting and formatting.
+
+### Setup Pre-commit Hooks
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install
+```
+
+### Running Checks
+
+Run on all files:
+```bash
+pre-commit run --all-files
+```
+
+Run on staged files only:
+```bash
+pre-commit run
+```
+
+Pre-commit will automatically run when you commit.
+
 ## Testing
 
 Run all tests:

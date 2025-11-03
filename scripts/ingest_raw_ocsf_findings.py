@@ -30,8 +30,8 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text, MetaData, Table, Column, String, TIMESTAMP
-from sqlalchemy.dialects.postgresql import insert, JSONB
+from sqlalchemy import TIMESTAMP, Column, MetaData, String, Table, create_engine, text
+from sqlalchemy.dialects.postgresql import JSONB, insert
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,7 +64,7 @@ class OCSFIngestor:
         load_dotenv()
         self.database_url = database_url or os.getenv("DATABASE_URL")
         if not self.database_url:
-            raise EnvironmentError("DATABASE_URL not set in environment or .env file")
+            raise OSError("DATABASE_URL not set in environment or .env file")
 
         self.schema = schema
 
@@ -78,12 +78,12 @@ class OCSFIngestor:
         """Setup the SQLAlchemy table definition for raw_ocsf_findings."""
         metadata = MetaData(schema=self.schema)
         self.raw_ocsf_findings_table = Table(
-            'raw_ocsf_findings',
+            "raw_ocsf_findings",
             metadata,
-            Column('finding_uid', String, primary_key=True),
-            Column('raw_ocsf_json', JSONB, nullable=False),
-            Column('loaded_at', TIMESTAMP(timezone=True), server_default=text('now()')),
-            schema=self.schema
+            Column("finding_uid", String, primary_key=True),
+            Column("raw_ocsf_json", JSONB, nullable=False),
+            Column("loaded_at", TIMESTAMP(timezone=True), server_default=text("now()")),
+            schema=self.schema,
         )
 
     def store_findings_to_db(self, ocsf_events_list: list, source_filename: str) -> int:
@@ -102,10 +102,7 @@ class OCSFIngestor:
         """
         total_loaded = 0
 
-        self.logger.info(
-            "Storing %d validated events from %s.",
-            len(ocsf_events_list), source_filename
-        )
+        self.logger.info("Storing %d validated events from %s.", len(ocsf_events_list), source_filename)
 
         for event in ocsf_events_list:
             finding_id = event.get("finding_info", {}).get("uid")
@@ -132,9 +129,7 @@ class OCSFIngestor:
                 total_loaded += 1
                 self.logger.debug("Upserted finding %s", finding_id)
             except Exception as e:
-                self.logger.error(
-                    "Failed to upsert finding %s: %s", finding_id, e, exc_info=True
-                )
+                self.logger.error("Failed to upsert finding %s: %s", finding_id, e, exc_info=True)
                 raise
 
         return total_loaded
@@ -168,7 +163,7 @@ class OCSFIngestor:
 
         try:
             # Load and parse JSON
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 ocsf_data = json.load(f)
 
             # Store to database
@@ -201,20 +196,18 @@ class IngestorCLI(BaseToolCLI):
         return "Raw Ingestion Layer for OCSF data. Ingests OCSF files into database."
 
     def get_epilog(self) -> str:
-        return "Returns exit code 0 on success, 1 on failure.\n\nNote: Use ocsf_monitor.py for batch processing with file management."
+        return (
+            "Returns exit code 0 on success, 1 on failure.\n\n"
+            "Note: Use ocsf_monitor.py for batch processing with file management."
+        )
 
     def add_arguments(self, parser):
+        parser.add_argument("--input-file", type=str, required=True, help="Path to the OCSF input file to ingest")
         parser.add_argument(
-            '--input-file',
+            "--schema",
             type=str,
-            required=True,
-            help='Path to the OCSF input file to ingest'
-        )
-        parser.add_argument(
-            '--schema',
-            type=str,
-            default='boann_landing',
-            help='Database schema name (default: boann_landing) where findings will be inserted'
+            default="boann_landing",
+            help="Database schema name (default: boann_landing) where findings will be inserted",
         )
 
     def execute(self) -> int:

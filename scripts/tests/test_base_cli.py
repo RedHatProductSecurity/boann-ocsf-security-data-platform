@@ -15,7 +15,7 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from base_cli import BaseToolCLI, BaseConverterCLI
+from base_cli import BaseConverterCLI, BaseToolCLI
 
 
 class ConcreteToolCLI(BaseToolCLI):
@@ -25,7 +25,7 @@ class ConcreteToolCLI(BaseToolCLI):
         return "Test Tool Description"
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument('--test-arg', help='Test argument')
+        parser.add_argument("--test-arg", help="Test argument")
 
     def execute(self) -> int:
         return 0
@@ -41,7 +41,7 @@ class ConcreteConverterCLI(BaseConverterCLI):
         return Mock  # Return a mock converter class
 
     def add_positional_arguments(self, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument('input_file', help='Input file')
+        parser.add_argument("input_file", help="Input file")
 
     def perform_conversion(self, converter) -> list:
         return [{"test": "finding"}]
@@ -66,16 +66,16 @@ def test_build_argument_parser(tool_cli):
     parser = tool_cli.build_argument_parser()
 
     # Parse with custom arguments
-    args = parser.parse_args(['--test-arg', 'value', '--log-level', 'debug'])
-    assert args.test_arg == 'value'
-    assert args.log_level == 'debug'
+    args = parser.parse_args(["--test-arg", "value", "--log-level", "debug"])
+    assert args.test_arg == "value"
+    assert args.log_level == "debug"
 
     # Test default log level
-    args_default = parser.parse_args(['--test-arg', 'value'])
-    assert args_default.log_level == 'info'
+    args_default = parser.parse_args(["--test-arg", "value"])
+    assert args_default.log_level == "info"
 
 
-@patch('sys.argv', ['test_cli.py', '--test-arg', 'value'])
+@patch("sys.argv", ["test_cli.py", "--test-arg", "value"])
 def test_run_success(tool_cli):
     """Test successful run workflow"""
     exit_code = tool_cli.run()
@@ -85,11 +85,14 @@ def test_run_success(tool_cli):
     assert tool_cli.args is not None
 
 
-@pytest.mark.parametrize("exception,expected_exit_code", [
-    (KeyboardInterrupt(), 1),
-    (Exception("Test error"), 1),
-])
-@patch('sys.argv', ['test_cli.py', '--test-arg', 'value'])
+@pytest.mark.parametrize(
+    "exception,expected_exit_code",
+    [
+        (KeyboardInterrupt(), 1),
+        (Exception("Test error"), 1),
+    ],
+)
+@patch("sys.argv", ["test_cli.py", "--test-arg", "value"])
 def test_run_error_handling(tool_cli, exception, expected_exit_code):
     """Test run handles exceptions gracefully"""
     tool_cli.execute = Mock(side_effect=exception)
@@ -101,20 +104,21 @@ def test_run_error_handling(tool_cli, exception, expected_exit_code):
 
 def test_custom_validate_arguments():
     """Test custom validate_arguments extensibility"""
+
     class CustomToolCLI(ConcreteToolCLI):
         def validate_arguments(self):
-            if self.args.test_arg == 'invalid':
+            if self.args.test_arg == "invalid":
                 raise SystemExit(1)
 
     cli = CustomToolCLI()
     cli.args = Mock()
 
     # Valid argument should not raise
-    cli.args.test_arg = 'valid'
+    cli.args.test_arg = "valid"
     cli.validate_arguments()
 
     # Invalid argument should raise SystemExit
-    cli.args.test_arg = 'invalid'
+    cli.args.test_arg = "invalid"
     with pytest.raises(SystemExit):
         cli.validate_arguments()
 
@@ -125,10 +129,10 @@ def test_converter_adds_required_arguments(converter_cli):
     parser = converter_cli.build_argument_parser()
 
     # Parse with all required arguments
-    args = parser.parse_args(['input.txt', 'output.json'])
+    args = parser.parse_args(["input.txt", "output.json"])
 
-    assert args.input_file == 'input.txt'
-    assert args.output_file == 'output.json'
+    assert args.input_file == "input.txt"
+    assert args.output_file == "output.json"
 
 
 def test_converter_has_enrichment_args(converter_cli):
@@ -136,16 +140,20 @@ def test_converter_has_enrichment_args(converter_cli):
     parser = converter_cli.build_argument_parser()
 
     # Parse with enrichment arguments
-    args = parser.parse_args([
-        'input.txt',
-        'output.json',
-        '--enrichment-dir', '/path/to/enrichments',
-        '--enrichment-arg', 'MyEnrichment:param=value'
-    ])
+    args = parser.parse_args(
+        [
+            "input.txt",
+            "output.json",
+            "--enrichment-dir",
+            "/path/to/enrichments",
+            "--enrichment-arg",
+            "MyEnrichment:param=value",
+        ]
+    )
 
-    assert args.enrichment_dirs == ['/path/to/enrichments']
-    assert args.enrichment_args == ['MyEnrichment:param=value']
+    assert args.enrichment_dirs == ["/path/to/enrichments"]
+    assert args.enrichment_args == ["MyEnrichment:param=value"]
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

@@ -4,3 +4,9 @@
 # Testing
 pytest~=8.4.2
 pytest-cov~=6.0.0
+
+# Linting and formatting
+ruff~=0.14.1
+
+# Pre-commit hooks
+pre-commit~=4.0.1

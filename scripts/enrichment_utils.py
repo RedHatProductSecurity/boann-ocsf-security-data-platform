@@ -10,15 +10,14 @@ import importlib.util
 import inspect
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 from enrichments import EnrichmentPlugin
-
 
 logger = logging.getLogger(__name__)
 
 
-def discover_enrichments(enrichment_dirs: List[str], log: logging.Logger = None) -> List[type]:
+def discover_enrichments(enrichment_dirs: list[str], log: logging.Logger = None) -> list[type]:
     """
     Discover enrichment classes from specified directories.
 
@@ -58,14 +57,17 @@ def discover_enrichments(enrichment_dirs: List[str], log: logging.Logger = None)
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
                     import sys
+
                     sys.modules[module_name] = module
                     spec.loader.exec_module(module)
 
                     # Find all classes that inherit from EnrichmentPlugin
                     for name, obj in inspect.getmembers(module, inspect.isclass):
-                        if (issubclass(obj, EnrichmentPlugin) and
-                            obj is not EnrichmentPlugin and
-                            obj not in enrichment_classes):
+                        if (
+                            issubclass(obj, EnrichmentPlugin)
+                            and obj is not EnrichmentPlugin
+                            and obj not in enrichment_classes
+                        ):
                             log.info(f"Discovered enrichment: {name} from {py_file.name}")
                             enrichment_classes.append(obj)
 
@@ -76,7 +78,7 @@ def discover_enrichments(enrichment_dirs: List[str], log: logging.Logger = None)
     return enrichment_classes
 
 
-def parse_enrichment_args(enrichment_args: List[str], log: logging.Logger = None) -> Dict[str, Dict[str, Any]]:
+def parse_enrichment_args(enrichment_args: list[str], log: logging.Logger = None) -> dict[str, dict[str, Any]]:
     """
     Parse enrichment arguments from CLI.
 
@@ -142,10 +144,10 @@ def parse_enrichment_args(enrichment_args: List[str], log: logging.Logger = None
 
 
 def instantiate_enrichments(
-    enrichment_classes: List[type],
-    enrichment_args: Dict[str, Dict[str, Any]],
-    log: logging.Logger = None
-) -> List[EnrichmentPlugin]:
+    enrichment_classes: list[type],
+    enrichment_args: dict[str, dict[str, Any]],
+    log: logging.Logger = None,
+) -> list[EnrichmentPlugin]:
     """
     Instantiate enrichment classes with their arguments.
 
@@ -184,10 +186,8 @@ def instantiate_enrichments(
 
 
 def discover_and_load_enrichments(
-    enrichment_dirs: List[str],
-    enrichment_args: List[str] = None,
-    log: logging.Logger = None
-) -> List[EnrichmentPlugin]:
+    enrichment_dirs: list[str], enrichment_args: list[str] = None, log: logging.Logger = None
+) -> list[EnrichmentPlugin]:
     """
     Convenience function that combines discovery, parsing, and instantiation.
 
@@ -247,19 +247,19 @@ def add_enrichment_arguments(parser: argparse.ArgumentParser) -> argparse.Argume
         parser.add_argument('--my-custom-arg', help='Custom arg')
     """
     parser.add_argument(
-        '--enrichment-dir',
-        action='append',
-        dest='enrichment_dirs',
-        metavar='DIR',
-        help='Directory to search for enrichment plugins (can be specified multiple times)'
+        "--enrichment-dir",
+        action="append",
+        dest="enrichment_dirs",
+        metavar="DIR",
+        help="Directory to search for enrichment plugins (can be specified multiple times)",
     )
     parser.add_argument(
-        '--enrichment-arg',
-        action='append',
-        dest='enrichment_args',
-        metavar='NAME:KEY=VALUE',
-        help='Argument for enrichment in format EnrichmentName:arg_name=value. '
-             'Values are passed as strings. (can be specified multiple times)'
+        "--enrichment-arg",
+        action="append",
+        dest="enrichment_args",
+        metavar="NAME:KEY=VALUE",
+        help="Argument for enrichment in format EnrichmentName:arg_name=value. "
+        "Values are passed as strings. (can be specified multiple times)",
     )
 
     return parser

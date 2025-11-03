@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -48,10 +48,10 @@ def temp_directories():
     os.makedirs(failed_folder)
 
     yield {
-        'temp_dir': temp_dir,
-        'source_folder': source_folder,
-        'processed_folder': processed_folder,
-        'failed_folder': failed_folder
+        "temp_dir": temp_dir,
+        "source_folder": source_folder,
+        "processed_folder": processed_folder,
+        "failed_folder": failed_folder,
     }
 
     # Cleanup
@@ -62,9 +62,9 @@ def temp_directories():
 def mock_args(temp_directories):
     """Fixture to create mock args with temporary directories"""
     args = Mock()
-    args.source_folder = temp_directories['source_folder']
-    args.processed_folder = temp_directories['processed_folder']
-    args.failed_folder = temp_directories['failed_folder']
+    args.source_folder = temp_directories["source_folder"]
+    args.processed_folder = temp_directories["processed_folder"]
+    args.failed_folder = temp_directories["failed_folder"]
     return args
 
 
@@ -100,11 +100,7 @@ def test_process_local_files_no_files(reset_globals, mock_args):
     mock_ingestor = Mock()
     mock_logger = Mock()
 
-    result = process_local_files(
-        mock_args,
-        mock_ingestor,
-        mock_logger
-    )
+    result = process_local_files(mock_args, mock_ingestor, mock_logger)
 
     assert result is True  # No files is not a failure
     mock_ingestor.ingest_file.assert_not_called()
@@ -117,11 +113,7 @@ def test_process_local_files_source_not_exists(reset_globals):
     mock_ingestor = Mock()
     mock_logger = Mock()
 
-    result = process_local_files(
-        args,
-        mock_ingestor,
-        mock_logger
-    )
+    result = process_local_files(args, mock_ingestor, mock_logger)
 
     assert result is False
 
@@ -129,8 +121,8 @@ def test_process_local_files_source_not_exists(reset_globals):
 def test_process_local_files_successful_processing(reset_globals, mock_args, temp_directories):
     """Test successful processing of OCSF files"""
     # Create test files
-    test_file1 = os.path.join(temp_directories['source_folder'], "test1.ocsf.json")
-    test_file2 = os.path.join(temp_directories['source_folder'], "test2.ocsf.json")
+    test_file1 = os.path.join(temp_directories["source_folder"], "test1.ocsf.json")
+    test_file2 = os.path.join(temp_directories["source_folder"], "test2.ocsf.json")
     Path(test_file1).write_text("[]")
     Path(test_file2).write_text("[]")
 
@@ -139,19 +131,15 @@ def test_process_local_files_successful_processing(reset_globals, mock_args, tem
     mock_ingestor.ingest_file.return_value = True
     mock_logger = Mock()
 
-    result = process_local_files(
-        mock_args,
-        mock_ingestor,
-        mock_logger
-    )
+    result = process_local_files(mock_args, mock_ingestor, mock_logger)
 
     # Assertions
     assert result is True
     assert mock_ingestor.ingest_file.call_count == 2
 
     # Check files moved to processed folder
-    assert os.path.exists(os.path.join(temp_directories['processed_folder'], "test1.ocsf.json"))
-    assert os.path.exists(os.path.join(temp_directories['processed_folder'], "test2.ocsf.json"))
+    assert os.path.exists(os.path.join(temp_directories["processed_folder"], "test1.ocsf.json"))
+    assert os.path.exists(os.path.join(temp_directories["processed_folder"], "test2.ocsf.json"))
     assert not os.path.exists(test_file1)
     assert not os.path.exists(test_file2)
 
@@ -159,7 +147,7 @@ def test_process_local_files_successful_processing(reset_globals, mock_args, tem
 def test_process_local_files_ingestion_failure(reset_globals, mock_args, temp_directories):
     """Test processing with ingestion failure"""
     # Create test file
-    test_file = os.path.join(temp_directories['source_folder'], "test.ocsf.json")
+    test_file = os.path.join(temp_directories["source_folder"], "test.ocsf.json")
     Path(test_file).write_text("[]")
 
     # Mock failed ingestion
@@ -167,18 +155,14 @@ def test_process_local_files_ingestion_failure(reset_globals, mock_args, temp_di
     mock_ingestor.ingest_file.return_value = False
     mock_logger = Mock()
 
-    result = process_local_files(
-        mock_args,
-        mock_ingestor,
-        mock_logger
-    )
+    result = process_local_files(mock_args, mock_ingestor, mock_logger)
 
     # Assertions
     assert result is False
     mock_ingestor.ingest_file.assert_called_once()
 
     # Check file moved to failed folder
-    assert os.path.exists(os.path.join(temp_directories['failed_folder'], "test.ocsf.json"))
+    assert os.path.exists(os.path.join(temp_directories["failed_folder"], "test.ocsf.json"))
     assert not os.path.exists(test_file)
 
 
@@ -186,7 +170,7 @@ def test_process_local_files_shutdown_signal(reset_globals, mock_args, temp_dire
     """Test processing stops on shutdown signal"""
     # Create multiple test files
     for i in range(5):
-        test_file = os.path.join(temp_directories['source_folder'], f"test{i}.ocsf.json")
+        test_file = os.path.join(temp_directories["source_folder"], f"test{i}.ocsf.json")
         Path(test_file).write_text("[]")
 
     # Set shutdown flag after first file
@@ -198,11 +182,7 @@ def test_process_local_files_shutdown_signal(reset_globals, mock_args, temp_dire
     mock_ingestor.ingest_file.side_effect = set_shutdown_flag
     mock_logger = Mock()
 
-    result = process_local_files(
-        mock_args,
-        mock_ingestor,
-        mock_logger
-    )
+    result = process_local_files(mock_args, mock_ingestor, mock_logger)
 
     # Assertions
     assert result is False  # Shutdown is treated as failure
@@ -213,8 +193,8 @@ def test_process_local_files_shutdown_signal(reset_globals, mock_args, temp_dire
 def test_process_local_files_mixed_results(reset_globals, mock_args, temp_directories):
     """Test processing with mixed success/failure results"""
     # Create test files (names chosen to sort in desired order)
-    test_file1 = os.path.join(temp_directories['source_folder'], "a_success.ocsf.json")
-    test_file2 = os.path.join(temp_directories['source_folder'], "b_failure.ocsf.json")
+    test_file1 = os.path.join(temp_directories["source_folder"], "a_success.ocsf.json")
+    test_file2 = os.path.join(temp_directories["source_folder"], "b_failure.ocsf.json")
     Path(test_file1).write_text("[]")
     Path(test_file2).write_text("[]")
 
@@ -223,16 +203,12 @@ def test_process_local_files_mixed_results(reset_globals, mock_args, temp_direct
     mock_ingestor.ingest_file.side_effect = [True, False]
     mock_logger = Mock()
 
-    result = process_local_files(
-        mock_args,
-        mock_ingestor,
-        mock_logger
-    )
+    result = process_local_files(mock_args, mock_ingestor, mock_logger)
 
     # Assertions
     assert result is False  # At least one failure
-    assert os.path.exists(os.path.join(temp_directories['processed_folder'], "a_success.ocsf.json"))
-    assert os.path.exists(os.path.join(temp_directories['failed_folder'], "b_failure.ocsf.json"))
+    assert os.path.exists(os.path.join(temp_directories["processed_folder"], "a_success.ocsf.json"))
+    assert os.path.exists(os.path.join(temp_directories["failed_folder"], "b_failure.ocsf.json"))
 
 
 # TestMonitorCLI Tests
@@ -287,8 +263,8 @@ def test_validate_arguments_creates_folders(monitor_cli):
         shutil.rmtree(temp_dir)
 
 
-@patch('ocsf_monitor.OCSFIngestor')
-@patch('ocsf_monitor.process_local_files')
+@patch("ocsf_monitor.OCSFIngestor")
+@patch("ocsf_monitor.process_local_files")
 def test_execute_success(mock_process, mock_ingestor_class, monitor_cli):
     """Test CLI execution with successful processing"""
     # Mock the process_local_files function
@@ -308,8 +284,8 @@ def test_execute_success(mock_process, mock_ingestor_class, monitor_cli):
     mock_process.assert_called_once()
 
 
-@patch('ocsf_monitor.OCSFIngestor')
-@patch('ocsf_monitor.process_local_files')
+@patch("ocsf_monitor.OCSFIngestor")
+@patch("ocsf_monitor.process_local_files")
 def test_execute_failure(mock_process, mock_ingestor_class, monitor_cli):
     """Test CLI execution with processing failure"""
     # Mock the process_local_files function to return failure
@@ -327,7 +303,7 @@ def test_execute_failure(mock_process, mock_ingestor_class, monitor_cli):
     assert exit_code == 1
 
 
-@patch('ocsf_monitor.OCSFIngestor')
+@patch("ocsf_monitor.OCSFIngestor")
 def test_execute_initialization_error(mock_ingestor_class, monitor_cli):
     """Test CLI execution with initialization error"""
     # Mock ingestor initialization to raise exception
@@ -345,15 +321,10 @@ def test_execute_initialization_error(mock_ingestor_class, monitor_cli):
     assert exit_code == 1
 
 
-@patch('ocsf_monitor.signal.signal')
-@patch('ocsf_monitor.OCSFIngestor')
-@patch('ocsf_monitor.process_local_files')
-def test_execute_registers_signal_handlers(
-    mock_process,
-    mock_ingestor_class,
-    mock_signal,
-    monitor_cli
-):
+@patch("ocsf_monitor.signal.signal")
+@patch("ocsf_monitor.OCSFIngestor")
+@patch("ocsf_monitor.process_local_files")
+def test_execute_registers_signal_handlers(mock_process, mock_ingestor_class, mock_signal, monitor_cli):
     """Test that execute registers signal handlers"""
     mock_process.return_value = True
 
@@ -379,14 +350,10 @@ def test_ocsf_monitor_cli_no_argument():
     script_dir = Path(__file__).parent.parent
     script_path = script_dir / "ocsf_monitor.py"
 
-    result = subprocess.run(
-        [sys.executable, str(script_path), "--help"],
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run([sys.executable, str(script_path), "--help"], capture_output=True, text=True)
 
     assert result.returncode == 0
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
