@@ -29,7 +29,7 @@ class SARIFConverterCLI(BaseConverterCLI):
 
     def get_description(self) -> str:
         """Get converter description."""
-        return 'Convert SARIF files to OCSF format'
+        return "Convert SARIF files to OCSF format"
 
     def get_converter_class(self):
         """Get the SARIF converter class."""
@@ -37,11 +37,11 @@ class SARIFConverterCLI(BaseConverterCLI):
 
     def get_epilog(self) -> str:
         """Get help epilog."""
-        return 'Example: python sarif_to_ocsf.py scan.sarif output.ocsf.json --enrichment-dir ./enrichments'
+        return "Example: python sarif_to_ocsf.py scan.sarif output.ocsf.json --enrichment-dir ./enrichments"
 
     def add_positional_arguments(self, parser) -> None:
         """Add SARIF-specific positional arguments."""
-        parser.add_argument('input_file', help='Path to input SARIF file')
+        parser.add_argument("input_file", help="Path to input SARIF file")
 
     def validate_arguments(self) -> None:
         """Validate that the input SARIF file exists."""
@@ -55,5 +55,5 @@ class SARIFConverterCLI(BaseConverterCLI):
         return converter.convert_file(self.args.input_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     SARIFConverterCLI().run()

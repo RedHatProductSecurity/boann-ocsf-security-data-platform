@@ -6,7 +6,7 @@ Plugins can add organization-specific metadata to OCSF findings during conversio
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class EnrichmentPlugin(ABC):
@@ -34,7 +34,7 @@ class EnrichmentPlugin(ABC):
     """
 
     @abstractmethod
-    def enrich(self, finding: Dict[str, Any]) -> Dict[str, Any]:
+    def enrich(self, finding: dict[str, Any]) -> dict[str, Any]:
         """
         Enrich an OCSF finding with organization-specific metadata.
 
@@ -60,7 +60,7 @@ class EnrichmentPlugin(ABC):
         """
         return self.__class__.__name__
 
-    def validate_finding(self, finding: Dict[str, Any]) -> bool:
+    def validate_finding(self, finding: dict[str, Any]) -> bool:
         """
         Validate that the finding has required fields before enrichment.
 
@@ -71,5 +71,5 @@ class EnrichmentPlugin(ABC):
             True if finding is valid for enrichment, False otherwise
         """
         # Basic OCSF validation - check for required top-level fields
-        required_fields = ['finding_info', 'metadata']
+        required_fields = ["finding_info", "metadata"]
         return all(field in finding for field in required_fields)

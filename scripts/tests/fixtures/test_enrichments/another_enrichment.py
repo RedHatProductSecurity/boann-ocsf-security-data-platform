@@ -2,9 +2,10 @@
 Another test enrichment for testing multiple enrichments.
 """
 
-import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../"))
 from enrichments import EnrichmentPlugin
 
 
@@ -13,14 +14,8 @@ class AnotherEnrichment(EnrichmentPlugin):
 
     def enrich(self, finding):
         """Add another test enrichment."""
-        if 'enrichments' not in finding:
-            finding['enrichments'] = []
+        if "enrichments" not in finding:
+            finding["enrichments"] = []
 
-        finding['enrichments'].append({
-            'name': 'test_another',
-            'value': 'another_value',
-            'type': 'test'
-        })
+        finding["enrichments"].append({"name": "test_another", "value": "another_value", "type": "test"})
         return finding
-
-

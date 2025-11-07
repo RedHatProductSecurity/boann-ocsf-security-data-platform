@@ -11,21 +11,21 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ingest_raw_ocsf_findings import OCSFIngestor, IngestorCLI
+from ingest_raw_ocsf_findings import IngestorCLI, OCSFIngestor
 
 
 # Fixtures
 @pytest.fixture
 def mock_engine():
     """Fixture for mock database engine"""
-    with patch('ingest_raw_ocsf_findings.create_engine') as mock_create_engine:
+    with patch("ingest_raw_ocsf_findings.create_engine") as mock_create_engine:
         engine = Mock()
         mock_create_engine.return_value = engine
         yield engine
@@ -34,7 +34,7 @@ def mock_engine():
 @pytest.fixture
 def ingestor(mock_engine):
     """Fixture for OCSFIngestor instance"""
-    with patch.dict(os.environ, {'DATABASE_URL': 'postgresql://test:test@localhost/test'}):
+    with patch.dict(os.environ, {"DATABASE_URL": "postgresql://test:test@localhost/test"}):
         return OCSFIngestor(schema="test_schema")
 
 
@@ -45,9 +45,9 @@ def ingestor_cli():
 
 
 # TestOCSFIngestor Tests
-@patch('ingest_raw_ocsf_findings.create_engine')
-@patch('ingest_raw_ocsf_findings.load_dotenv')
-@patch.dict(os.environ, {'DATABASE_URL': 'postgresql://test:test@localhost/test'})
+@patch("ingest_raw_ocsf_findings.create_engine")
+@patch("ingest_raw_ocsf_findings.load_dotenv")
+@patch.dict(os.environ, {"DATABASE_URL": "postgresql://test:test@localhost/test"})
 def test_init_default_schema(mock_load_dotenv, mock_create_engine):
     """Test initialization with default schema"""
     mock_engine = Mock()
@@ -60,9 +60,9 @@ def test_init_default_schema(mock_load_dotenv, mock_create_engine):
     mock_create_engine.assert_called_once()
 
 
-@patch('ingest_raw_ocsf_findings.create_engine')
-@patch('ingest_raw_ocsf_findings.load_dotenv')
-@patch.dict(os.environ, {'DATABASE_URL': 'postgresql://test:test@localhost/test'})
+@patch("ingest_raw_ocsf_findings.create_engine")
+@patch("ingest_raw_ocsf_findings.load_dotenv")
+@patch.dict(os.environ, {"DATABASE_URL": "postgresql://test:test@localhost/test"})
 def test_init_custom_schema(mock_load_dotenv, mock_create_engine):
     """Test initialization with custom schema"""
     mock_engine = Mock()
@@ -73,8 +73,8 @@ def test_init_custom_schema(mock_load_dotenv, mock_create_engine):
     assert ingestor.schema == "custom_schema"
 
 
-@patch('ingest_raw_ocsf_findings.create_engine')
-@patch('ingest_raw_ocsf_findings.load_dotenv')
+@patch("ingest_raw_ocsf_findings.create_engine")
+@patch("ingest_raw_ocsf_findings.load_dotenv")
 @patch.dict(os.environ, {}, clear=True)
 def test_init_no_database_url(mock_load_dotenv, mock_create_engine):
     """Test initialization fails without DATABASE_URL"""
@@ -84,8 +84,8 @@ def test_init_no_database_url(mock_load_dotenv, mock_create_engine):
     assert "DATABASE_URL" in str(excinfo.value)
 
 
-@patch('ingest_raw_ocsf_findings.create_engine')
-@patch.dict(os.environ, {'DATABASE_URL': 'postgresql://test:test@localhost/test'})
+@patch("ingest_raw_ocsf_findings.create_engine")
+@patch.dict(os.environ, {"DATABASE_URL": "postgresql://test:test@localhost/test"})
 def test_init_custom_database_url(mock_create_engine):
     """Test initialization with custom database URL"""
     custom_url = "postgresql://custom:custom@localhost/custom"
@@ -109,16 +109,8 @@ def test_store_findings_to_db_success(ingestor, mock_engine):
 
     # Test data
     findings = [
-        {
-            "finding_info": {"uid": "test-1"},
-            "severity": "High",
-            "message": "Test finding 1"
-        },
-        {
-            "finding_info": {"uid": "test-2"},
-            "severity": "Medium",
-            "message": "Test finding 2"
-        }
+        {"finding_info": {"uid": "test-1"}, "severity": "High", "message": "Test finding 1"},
+        {"finding_info": {"uid": "test-2"}, "severity": "Medium", "message": "Test finding 2"},
     ]
 
     # Execute
@@ -140,9 +132,7 @@ def test_store_findings_to_db_failure(ingestor, mock_engine):
     mock_engine.begin.return_value = mock_context
 
     # Test data
-    findings = [
-        {"finding_info": {"uid": "test-1"}, "message": "Test"}
-    ]
+    findings = [{"finding_info": {"uid": "test-1"}, "message": "Test"}]
 
     # Execute and assert exception is raised
     with pytest.raises(Exception) as excinfo:
@@ -172,15 +162,9 @@ def test_ingest_file_wrong_extension(ingestor):
 def test_ingest_file_success(ingestor, mock_engine):
     """Test successful file ingestion"""
     # Create test OCSF file
-    test_data = [
-        {"finding_info": {"uid": "test-1"}, "message": "Test finding"}
-    ]
+    test_data = [{"finding_info": {"uid": "test-1"}, "message": "Test finding"}]
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".ocsf.json",
-        mode='w',
-        delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(suffix=".ocsf.json", mode="w", delete=False) as f:
         json.dump(test_data, f)
         temp_file = f.name
 
@@ -206,11 +190,7 @@ def test_ingest_file_empty(ingestor, mock_engine):
     """Test ingestion of empty file"""
     test_data = []
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".ocsf.json",
-        mode='w',
-        delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(suffix=".ocsf.json", mode="w", delete=False) as f:
         json.dump(test_data, f)
         temp_file = f.name
 
@@ -234,11 +214,7 @@ def test_ingest_file_empty(ingestor, mock_engine):
 
 def test_ingest_file_invalid_json(ingestor):
     """Test ingestion fails with invalid JSON"""
-    with tempfile.NamedTemporaryFile(
-        suffix=".ocsf.json",
-        mode='w',
-        delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(suffix=".ocsf.json", mode="w", delete=False) as f:
         f.write("invalid json {")
         temp_file = f.name
 
@@ -251,15 +227,9 @@ def test_ingest_file_invalid_json(ingestor):
 
 def test_ingest_file_database_error(ingestor, mock_engine):
     """Test ingestion fails on database error"""
-    test_data = [
-        {"finding_info": {"uid": "test-1"}, "message": "Test"}
-    ]
+    test_data = [{"finding_info": {"uid": "test-1"}, "message": "Test"}]
 
-    with tempfile.NamedTemporaryFile(
-        suffix=".ocsf.json",
-        mode='w',
-        delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(suffix=".ocsf.json", mode="w", delete=False) as f:
         json.dump(test_data, f)
         temp_file = f.name
 
@@ -282,7 +252,7 @@ def test_ingest_file_database_error(ingestor, mock_engine):
 
 
 # TestIngestorCLI Tests
-@patch('ingest_raw_ocsf_findings.OCSFIngestor')
+@patch("ingest_raw_ocsf_findings.OCSFIngestor")
 def test_execute_success(mock_ingestor_class, ingestor_cli):
     """Test CLI execution with successful ingestion"""
     # Mock ingestor instance
@@ -305,7 +275,7 @@ def test_execute_success(mock_ingestor_class, ingestor_cli):
     mock_ingestor.ingest_file.assert_called_once_with("/test/file.ocsf.json")
 
 
-@patch('ingest_raw_ocsf_findings.OCSFIngestor')
+@patch("ingest_raw_ocsf_findings.OCSFIngestor")
 def test_execute_failure(mock_ingestor_class, ingestor_cli):
     """Test CLI execution with failed ingestion"""
     # Mock ingestor instance
@@ -326,7 +296,7 @@ def test_execute_failure(mock_ingestor_class, ingestor_cli):
     assert exit_code == 1
 
 
-@patch('ingest_raw_ocsf_findings.OCSFIngestor')
+@patch("ingest_raw_ocsf_findings.OCSFIngestor")
 def test_execute_exception(mock_ingestor_class, ingestor_cli):
     """Test CLI execution with exception"""
     # Mock ingestor to raise exception
@@ -353,14 +323,10 @@ def test_ingest_raw_ocsf_findings_cli_no_argument():
     script_dir = Path(__file__).parent.parent
     script_path = script_dir / "ingest_raw_ocsf_findings.py"
 
-    result = subprocess.run(
-        [sys.executable, str(script_path), "--help"],
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run([sys.executable, str(script_path), "--help"], capture_output=True, text=True)
 
     assert result.returncode == 0
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

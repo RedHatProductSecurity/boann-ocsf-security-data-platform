@@ -2,9 +2,10 @@
 Broken enrichment that will fail to instantiate.
 """
 
-import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../"))
 from enrichments import EnrichmentPlugin
 
 
@@ -20,5 +21,3 @@ class BrokenEnrichment(EnrichmentPlugin):
     def enrich(self, finding):
         """This won't be reached in tests."""
         return finding
-
-

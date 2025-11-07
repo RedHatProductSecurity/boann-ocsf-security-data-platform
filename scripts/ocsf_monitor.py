@@ -43,7 +43,7 @@ Processing Model:
     3. Moves files to processed/ (success) or failed/ (failure) folders
     4. Next run only processes new files (processed/failed ones are moved)
 """
-import logging
+
 import os
 import shutil
 import signal
@@ -81,7 +81,7 @@ def process_local_files(args, ingestor, logger):
     Returns:
         bool: True if all files processed successfully, False if any failed
     """
-    logger.info(f"\n--- Local OCSF File Monitor ---")
+    logger.info("\n--- Local OCSF File Monitor ---")
     logger.info(f"Source folder: '{args.source_folder}'")
     logger.info(f"Processed folder: '{args.processed_folder}'")
     logger.info(f"Failed folder: '{args.failed_folder}'")
@@ -144,31 +144,26 @@ class MonitorCLI(BaseToolCLI):
         return "Local OCSF File Monitor and Processor"
 
     def get_epilog(self) -> str:
-        return "Example: ocsf_monitor.py --source-folder /path/to/files/ --processed-folder /path/processed --failed-folder /path/failed"
+        return (
+            "Example: ocsf_monitor.py --source-folder /path/to/files/ "
+            "--processed-folder /path/processed --failed-folder /path/failed"
+        )
 
     def add_arguments(self, parser):
         # Required arguments
+        parser.add_argument("--source-folder", required=True, help="Local directory to monitor for OCSF files")
         parser.add_argument(
-            '--source-folder',
+            "--processed-folder",
             required=True,
-            help='Local directory to monitor for OCSF files'
+            help="Directory where successfully processed files will be moved",
         )
-        parser.add_argument(
-            '--processed-folder',
-            required=True,
-            help='Directory where successfully processed files will be moved'
-        )
-        parser.add_argument(
-            '--failed-folder',
-            required=True,
-            help='Directory where failed files will be moved'
-        )
+        parser.add_argument("--failed-folder", required=True, help="Directory where failed files will be moved")
         # Database configuration
         parser.add_argument(
-            '--schema',
+            "--schema",
             type=str,
-            default='boann_landing',
-            help='Database schema name (default: boann_landing) where findings will be inserted'
+            default="boann_landing",
+            help="Database schema name (default: boann_landing) where findings will be inserted",
         )
 
     def validate_arguments(self):

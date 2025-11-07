@@ -13,10 +13,9 @@ import argparse
 import logging
 import sys
 from abc import ABC, abstractmethod
-from typing import Optional, List
 
 from converters import BaseOCSFConverter
-from enrichment_utils import discover_and_load_enrichments, add_enrichment_arguments
+from enrichment_utils import add_enrichment_arguments, discover_and_load_enrichments
 
 
 class BaseToolCLI(ABC):
@@ -47,8 +46,8 @@ class BaseToolCLI(ABC):
 
     def __init__(self):
         """Initialize the CLI."""
-        self.logger: Optional[logging.Logger] = None
-        self.args: Optional[argparse.Namespace] = None
+        self.logger: logging.Logger | None = None
+        self.args: argparse.Namespace | None = None
 
     @abstractmethod
     def get_description(self) -> str:
@@ -89,7 +88,7 @@ class BaseToolCLI(ABC):
         Returns:
             Epilog string (optional, can be empty)
         """
-        return ''
+        return ""
 
     def setup_logging(self) -> None:
         """
@@ -99,12 +98,12 @@ class BaseToolCLI(ABC):
         """
         logging.basicConfig(
             level=getattr(logging, self.args.log_level.upper(), logging.INFO),
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def validate_arguments(self) -> None:
+    def validate_arguments(self) -> None:  # noqa: B027
         """
         Validate parsed arguments.
 
@@ -126,7 +125,7 @@ class BaseToolCLI(ABC):
         parser = argparse.ArgumentParser(
             description=self.get_description(),
             epilog=self.get_epilog(),
-            formatter_class=argparse.RawDescriptionHelpFormatter
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 
         # Add tool-specific arguments (required hook)
@@ -134,9 +133,9 @@ class BaseToolCLI(ABC):
 
         # Add standard log-level argument
         parser.add_argument(
-            '--log-level',
-            default='info',
-            help='Set the logging level (debug, info, warning, error, critical)'
+            "--log-level",
+            default="info",
+            help="Set the logging level (debug, info, warning, error, critical)",
         )
 
         return parser
@@ -245,7 +244,7 @@ class BaseConverterCLI(BaseToolCLI):
         pass
 
     @abstractmethod
-    def perform_conversion(self, converter: BaseOCSFConverter) -> List:
+    def perform_conversion(self, converter: BaseOCSFConverter) -> list:
         """
         Perform the conversion using the converter instance.
 
@@ -284,7 +283,7 @@ class BaseConverterCLI(BaseToolCLI):
         """
         pass
 
-    def create_converter(self, enrichments: List) -> BaseOCSFConverter:
+    def create_converter(self, enrichments: list) -> BaseOCSFConverter:
         """
         Create the converter instance.
 
@@ -315,7 +314,7 @@ class BaseConverterCLI(BaseToolCLI):
         self.add_positional_arguments(parser)
 
         # Add standard output_file argument (required for all converters)
-        parser.add_argument('output_file', help='Path to output OCSF JSON file')
+        parser.add_argument("output_file", help="Path to output OCSF JSON file")
 
         # Add converter-specific optional arguments (optional hook)
         self.add_converter_arguments(parser)
@@ -332,9 +331,7 @@ class BaseConverterCLI(BaseToolCLI):
         """
         # Discover and load enrichments
         enrichments = discover_and_load_enrichments(
-            self.args.enrichment_dirs or [],
-            self.args.enrichment_args or [],
-            self.logger
+            self.args.enrichment_dirs or [], self.args.enrichment_args or [], self.logger
         )
 
         # Create converter
@@ -350,8 +347,7 @@ class BaseConverterCLI(BaseToolCLI):
         # Success
         self.logger.info("Conversion completed successfully")
         if enrichments:
-            enrichment_names = ', '.join([e.get_name() for e in enrichments])
+            enrichment_names = ", ".join([e.get_name() for e in enrichments])
             self.logger.info(f"Applied enrichments: {enrichment_names}")
 
         return 0
-
