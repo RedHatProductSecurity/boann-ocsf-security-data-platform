@@ -7,9 +7,15 @@ to OCSF (Open Cybersecurity Schema Framework) format.
 
 import json
 import logging
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from enrichments import FindingUIDGenerator, ScanMetadata, ScanMetadataEnrichment
 
 from .base_converter import BaseOCSFConverter
 
@@ -63,27 +69,16 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             enable_uid_generation: If True, automatically generates finding UIDs (default: True)
             sdlc_type: SDLC type for generated UIDs (default: 'sast')
         """
-        # Import here to avoid circular dependencies
-        import os
-        import sys
-
-        sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-        from enrichments import FindingUIDGenerator
-
-        # Build enrichments list
         all_enrichments = []
 
-        # Add default UID generator if enabled
         if enable_uid_generation:
             uid_generator = FindingUIDGenerator(sdlc_type=sdlc_type)
             all_enrichments.append(uid_generator)
             logger.debug(f"UID generation enabled with sdlc_type='{sdlc_type}'")
 
-        # Add user-provided enrichments
         if enrichments:
             all_enrichments.extend(enrichments)
 
-        # Initialize base converter with all enrichments
         super().__init__(enrichments=all_enrichments)
 
     def convert_file(self, input_path: str) -> list[dict[str, Any]]:
@@ -114,6 +109,26 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             tool_metadata = self._extract_tool_metadata(run)
             created_time = self._extract_created_time(run)
 
+            # Auto-extract scan_run_id from SARIF if available
+            # Check if enrichments already contain scan_run_id
+            has_scan_run_id = any(
+                isinstance(e, ScanMetadataEnrichment)
+                for e in (self.enrichments or [])
+            )
+
+            # If no scan_run_id enrichment provided, try to extract from SARIF
+            original_enrichments = self.enrichments
+            if not has_scan_run_id:
+                scan_run_id = self._extract_scan_run_id(run)
+                if scan_run_id:
+                    logger.debug(f"Auto-extracted scan_run_id from SARIF: {scan_run_id}")
+                    # Create new enrichments list with scan enrichment prepended
+                    metadata = ScanMetadata(scan_run_id=scan_run_id)
+                    run_enrichments = [ScanMetadataEnrichment(metadata=metadata)]
+                    if self.enrichments:
+                        run_enrichments.extend(self.enrichments)
+                    self.enrichments = run_enrichments
+
             # Build rules lookup for enriching findings
             rules_lookup = self._build_rules_lookup(run)
 
@@ -131,6 +146,9 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
                         f"Failed to convert SARIF result: {e}",
                         exc_info=logger.isEnabledFor(logging.DEBUG),
                     )
+
+            # Restore original enrichments after processing this run
+            self.enrichments = original_enrichments
 
         logger.info(f"Converted {len(ocsf_findings)} findings from SARIF file")
         return ocsf_findings
@@ -241,6 +259,39 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
         # Fallback to current time
         return int(datetime.now().timestamp() * 1000)
+
+    def _extract_scan_run_id(self, run: dict[str, Any]) -> str | None:
+        """
+        Extract scan run ID from SARIF run for deterministic scan grouping.
+
+        Tries to extract a unique identifier for this scan run from:
+        1. automationDetails.id (preferred)
+        2. automationDetails.guid
+        3. Combination of tool name and invocation start time
+
+        Args:
+            run: SARIF run object
+
+        Returns:
+            Scan run ID string or None if not available
+        """
+        # Try automation details first (SARIF 2.1.0 spec)
+        automation = run.get('automationDetails', {})
+        if 'id' in automation:
+            return automation['id']
+        if 'guid' in automation:
+            return automation['guid']
+
+        # Fallback: generate from tool + timestamp
+        tool_name = run.get('tool', {}).get('driver', {}).get('name', 'unknown')
+        invocations = run.get('invocations', [])
+        for invocation in invocations:
+            start_time = invocation.get('startTimeUtc')
+            if start_time:
+                return f"{tool_name}_run_{start_time}"
+
+        # No identifier available
+        return None
 
     def _build_rules_lookup(self, run: dict[str, Any]) -> dict[str, dict]:
         """
