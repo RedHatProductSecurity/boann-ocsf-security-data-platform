@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from enrichments import FindingUIDGenerator, ScanMetadata, ScanMetadataEnrichment
 
@@ -111,10 +111,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
             # Auto-extract scan_run_id from SARIF if available
             # Check if enrichments already contain scan_run_id
-            has_scan_run_id = any(
-                isinstance(e, ScanMetadataEnrichment)
-                for e in (self.enrichments or [])
-            )
+            has_scan_run_id = any(isinstance(e, ScanMetadataEnrichment) for e in (self.enrichments or []))
 
             # If no scan_run_id enrichment provided, try to extract from SARIF
             original_enrichments = self.enrichments
@@ -276,17 +273,17 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             Scan run ID string or None if not available
         """
         # Try automation details first (SARIF 2.1.0 spec)
-        automation = run.get('automationDetails', {})
-        if 'id' in automation:
-            return automation['id']
-        if 'guid' in automation:
-            return automation['guid']
+        automation = run.get("automationDetails", {})
+        if "id" in automation:
+            return automation["id"]
+        if "guid" in automation:
+            return automation["guid"]
 
         # Fallback: generate from tool + timestamp
-        tool_name = run.get('tool', {}).get('driver', {}).get('name', 'unknown')
-        invocations = run.get('invocations', [])
+        tool_name = run.get("tool", {}).get("driver", {}).get("name", "unknown")
+        invocations = run.get("invocations", [])
         for invocation in invocations:
-            start_time = invocation.get('startTimeUtc')
+            start_time = invocation.get("startTimeUtc")
             if start_time:
                 return f"{tool_name}_run_{start_time}"
 

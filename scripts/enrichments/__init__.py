@@ -8,5 +8,6 @@ modifying core converter logic.
 
 from .base import EnrichmentPlugin
 from .finding_uid_generator import FindingUIDGenerator
+from .scan_metadata import ScanMetadata, ScanMetadataEnrichment
 
-__all__ = ["EnrichmentPlugin", "FindingUIDGenerator"]
+__all__ = ["EnrichmentPlugin", "FindingUIDGenerator", "ScanMetadataEnrichment", "ScanMetadata"]
