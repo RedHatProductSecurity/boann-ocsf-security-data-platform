@@ -1,0 +1,15 @@
+# dbt profiles configuration for local development
+
+default:
+  target: local
+  outputs:
+    local:
+      type: postgres
+      host: "{{ env_var('DBT_DB_HOST', 'localhost') }}"
+      user: "{{ env_var('DBT_DB_USER') }}"
+      password: "{{ env_var('DBT_DB_PASSWORD') }}"
+      port: "{{ env_var('DBT_DB_PORT', 5432) | int }}"
+      dbname: "{{ env_var('DBT_DB_NAME') }}"
+      schema: boann
+      threads: 2
+
