@@ -22,13 +22,12 @@
 --
 -- IMPORTANT: No unique_key constraint - preserves all findings from all scans.
 -- Same finding_uid in different contexts = separate rows.
--- Deduplication happens at core layer (dim_finding_instances) using instance_id.
 --
 -- Prevents data loss when same finding_uid (same fingerprint) appears in:
 -- 1. Different scan times (enables scan-level tracking)
 --    Example: SQL injection in curl-7.61.1 scanned on Oct 16 and Oct 20 = 2 rows
 -- 2. Different products (enables multi-product tracking)
---    Example: SQL injection in curl-7.61.1 in RHEL 8.9 and RHEL 8.10 = 2 rows (same UID)
+--    Example: SQL injection in curl-7.61.1 in Fedora 41 and Fedora 42 = 2 rows (same UID)
 --
 -- Data Lifecycle: Append-only strategy requires periodic cleanup of old raw data
 -- to manage storage growth. Implement retention policy based on loaded_at timestamp.
