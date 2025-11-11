@@ -1,0 +1,32 @@
+name: 'boann_ocsf_platform'
+version: '1.0.0'
+config-version: 2
+
+profile: 'default'
+
+model-paths: ["models"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  boann_ocsf_platform:
+    +materialized: view
+    landing:
+      +schema: landing
+      +materialized: table
+    staging:
+      +schema: staging
+      +materialized: table
+
+flags:
+  send_anonymous_usage_stats: False
+
+vars:
+  # Finding UID format validation pattern
+  # Set to null for generic upstream usage (no format constraint)
+  # Downstream projects can override this in their dbt_project.yml
+  finding_uid_format_pattern: null
+

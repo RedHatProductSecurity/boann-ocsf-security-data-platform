@@ -1,0 +1,156 @@
+# schema.yml
+version: 2
+
+models:
+  # --- dbt Landing Layer ---
+  - name: raw_ocsf_findings
+    description: |
+      Initial landing zone for raw OCSF JSON data.
+
+      This table stores complete OCSF finding documents with minimal transformation.
+      Data is ingested via scripts/ingest_raw_ocsf_findings.py using append-only strategy.
+      Same finding scanned at different times creates separate rows to enable scan-level tracking.
+
+      **Schema Management**: Managed by dbt
+      **Data Management**: Managed by Python ingestion scripts
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: finding_uid
+        description: |
+          Unique identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
+          Not unique across table (same finding scanned multiple times = multiple rows).
+
+          Format validation can be enforced via CHECK constraint added by post-hook.
+          The constraint pattern is controlled by 'finding_uid_format_pattern' variable in dbt_project.yml.
+        data_type: text
+        data_tests:
+          - not_null
+
+      - name: raw_ocsf_json
+        description: |
+          The complete OCSF JSON document for the finding. Stored as JSONB for
+          efficient querying and indexing. This preserves full fidelity of the
+          original OCSF data.
+        data_type: jsonb
+        data_tests:
+          - not_null
+
+      - name: loaded_at
+        description: |
+          Timestamp when this finding was loaded into the landing table.
+          Generated automatically by the database using CURRENT_TIMESTAMP.
+          Used for incremental processing in downstream staging models.
+        data_type: timestamptz
+
+  # --- dbt Staging Layer ---
+  - name: stg_ocsf_findings
+    description: |
+      Staging model that extracts and standardizes raw OCSF JSON data from landing.raw_ocsf_findings.
+      Preserves all findings from all scans without deduplication to enable scan-level tracking.
+
+      **No Deduplication**: Uses append-only strategy without unique_key constraint. Same finding_uid
+      in different contexts creates separate rows:
+      - Different scan times: SQL injection in curl-7.61.1 scanned on Oct 16 and Oct 20 = 2 rows
+      - Different products: SQL injection in curl-7.61.1 in Product A and Product B = 2 rows
+
+      **Data Lifecycle**: Append-only strategy requires periodic cleanup of old staging data to manage
+      storage growth. Implement retention policy based on staging_loaded_at timestamp.
+
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: finding_uid
+        description: |
+          Unique identifier for the security finding, extracted from OCSF `finding.uid`.
+          Not unique across table (same finding scanned multiple times = multiple rows).
+
+          Format validation can be enforced via CHECK constraint added by post-hook.
+          The constraint pattern is controlled by 'finding_uid_format_pattern' variable.
+        data_type: text
+        constraints:
+          - type: not_null
+
+      - name: tool_name
+        description: "Name of the security scanning tool that generated the finding (from OCSF `metadata.product.name`)."
+        data_type: text
+
+      - name: tool_version
+        description: "Version of the security scanning tool that generated the finding (from OCSF `metadata.product.version`)."
+        data_type: text
+
+      - name: scan_run_id
+        description: "Explicit identifier for deterministic scan grouping, extracted from OCSF enrichments. Used by generate_scan_key macro with COALESCE fallback to scanned_at. Enables idempotent reingestion and proper grouping of findings from the same scan run."
+        data_type: text
+
+      - name: detected_at
+        description: "Timestamp (UTC) when the finding was originally detected."
+        data_type: timestamptz
+
+      - name: finding_title
+        description: "Title of the security finding."
+        data_type: text
+
+      - name: finding_description
+        description: "Detailed description of the finding."
+        data_type: text
+
+      - name: finding_src_url
+        description: "Source URL where the finding can be viewed or managed in the original tool."
+        data_type: text
+
+      - name: finding_severity
+        description: "Severity level of the finding (e.g., Low, Medium, High, Critical)."
+        data_type: text
+        constraints:
+          - type: not_null
+
+      - name: finding_status
+        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...)"
+        data_type: text
+        constraints:
+          - type: not_null
+
+      - name: finding_activity_name
+        description: "Activity name indicating the lifecycle status of the finding (e.g., Create, Update, Close)."
+        data_type: text
+
+      - name: finding_remediation
+        description: "Remediation guidance description extracted from the OCSF remediation object."
+        data_type: text
+
+      - name: resources_jsonb
+        description: "JSONB array containing all resource objects associated with the finding from OCSF resources field."
+        data_type: jsonb
+
+      - name: affected_packages_jsonb
+        description: "JSONB array containing the affected software packages aggregated from all vulnerabilities."
+        data_type: jsonb
+
+      - name: vulnerabilities_subset_jsonb
+        description: "JSONB array containing vulnerabilities with their affected_code and affected_packages relationship preserved. Each vulnerability includes file location (path, line number) and associated components. This subset ensures the relationship between file locations and components is maintained for instance-level tracking."
+        data_type: jsonb
+
+      - name: finding_cwes
+        description: "JSONB array of CWE (Common Weakness Enumeration) identifiers aggregated from all vulnerabilities, including both direct CWEs and CVE-related CWEs."
+        data_type: jsonb
+
+      - name: finding_cves
+        description: "JSONB array of CVE (Common Vulnerabilities and Exposures) identifiers aggregated from all vulnerabilities."
+        data_type: jsonb
+
+      - name: finding_references
+        description: "JSONB array of reference URLs aggregated from all vulnerabilities for additional information and context."
+        data_type: jsonb
+
+      - name: staging_loaded_at
+        description: "Timestamp (UTC) when this raw OCSF finding record was loaded into the staging layer."
+        data_type: timestamptz
+        constraints:
+          - type: not_null
+
+      - name: enrichments_jsonb
+        description: "JSONB array containing all enrichment objects from OCSF enrichments field. Downstream projects can extract specific enrichments as needed."
+        data_type: jsonb
