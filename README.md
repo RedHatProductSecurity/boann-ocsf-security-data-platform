@@ -34,6 +34,23 @@ python scripts/ocsf_monitor.py \
 
 See [scripts/README.md](scripts/README.md) for detailed usage and examples.
 
+## Local Development
+
+To set up a complete local development environment with PostgreSQL and the application containerized:
+
+```bash
+# 1. Copy environment template
+cp env.example .env
+
+# 2. Start the environment (PostgreSQL + Application container)
+./scripts/run_podman.sh
+
+# 3. Access the application container
+podman exec -it boann-app bash
+```
+
+For detailed setup instructions, database configuration, and development workflow, see [CONTRIBUTING.md](scripts/CONTRIBUTING.md).
+
 ## Documentation
 
 - [Scripts Documentation](scripts/README.md) - Detailed usage for all tools and scripts
@@ -68,7 +85,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 This is an initial release with the following known limitations:
 
 - Not all SARIF fields are converted
-- Database schema must be created separately (dbt management tooling planned but not yet available)
+- Database schema is managed via dbt (Data Build Tool) for version-controlled schema definitions
 - API and data formats subject to change
 - Downstream enrichment required for organization-specific data
 

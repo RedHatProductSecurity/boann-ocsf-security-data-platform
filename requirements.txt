@@ -4,3 +4,7 @@ SQLAlchemy~=2.0.41
 
 # SQLAlchemy requires manual installation of database drivers
 psycopg2-binary~=2.9.10
+
+# dbt for schema management
+dbt-core~=1.8.0
+dbt-postgres~=1.8.0
