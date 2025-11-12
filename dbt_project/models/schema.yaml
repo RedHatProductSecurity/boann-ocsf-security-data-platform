@@ -25,7 +25,7 @@ models:
           Unique identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
           Primary key - ensures each finding_uid appears only once in the table.
 
-          Format validation is enforced via CHECK constraint added by post-hook.
+          Format validation can be enforced via CHECK constraint added by post-hook.
           The constraint pattern is controlled by 'finding_uid_format_pattern' variable in dbt_project.yml.
         data_type: text
         data_tests:
@@ -70,7 +70,7 @@ models:
           Unique identifier for the security finding, extracted from OCSF `finding.uid`.
           Not unique across table (same finding scanned multiple times = multiple rows).
 
-          Format validation can be enforced via CHECK constraint added by post-hook.
+          If the UID format is not specified, it will not be enforced, can be enforced via CHECK constraint added by post-hook.
           The constraint pattern is controlled by 'finding_uid_format_pattern' variable.
         data_type: text
         constraints:
