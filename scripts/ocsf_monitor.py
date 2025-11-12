@@ -182,8 +182,7 @@ def process_gcs_files(args, ingestor, logger):
             gcs_utils = gcs_utils_module
         except ImportError:
             logger.error(
-                "google-cloud-storage is required for GCS backend. "
-                "Install it with: pip install google-cloud-storage"
+                "google-cloud-storage is required for GCS backend. Install it with: pip install google-cloud-storage"
             )
             return False
 
@@ -217,9 +216,7 @@ def process_gcs_files(args, ingestor, logger):
     failed_files_count = 0
 
     # Scan GCS for files
-    logger.info(
-        f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Checking for new files in '{args.gcs_source_folder}'..."
-    )
+    logger.info(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Checking for new files in '{args.gcs_source_folder}'...")
     source_blobs = gcs_utils.list_files(args.gcs_source_folder)
 
     if not source_blobs:

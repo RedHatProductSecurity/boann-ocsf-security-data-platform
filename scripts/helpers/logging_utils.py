@@ -25,4 +25,3 @@ def setup_logging(log_level: str) -> None:
         force=True,  # Force reconfiguration even if handlers already exist
     )
     logging.debug("Logging has been configured.")
-

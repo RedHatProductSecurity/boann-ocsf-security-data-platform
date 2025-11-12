@@ -26,11 +26,11 @@ class _GCSHandler:
         """Initializes the GCS client and bucket."""
         try:
             from google.cloud import storage
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "google-cloud-storage is required for GCS functionality. "
                 "Install it with: pip install google-cloud-storage"
-            )
+            ) from e
 
         self.storage = storage
         self.client = storage.Client()
@@ -121,9 +121,7 @@ def init(bucket_name: str):
     if _handler is None:
         _handler = _GCSHandler(bucket_name)
     elif _handler.bucket.name != bucket_name:
-        raise ValueError(
-            f"Error: the gcs_utils module was initialized with {_handler.bucket.name}, NOT {bucket_name}!"
-        )
+        raise ValueError(f"Error: the gcs_utils module was initialized with {_handler.bucket.name}, NOT {bucket_name}!")
 
 
 def _get_handler():
@@ -256,4 +254,3 @@ def smart_push(uri: str, data: bytes):
             os.makedirs(parent_dir, exist_ok=True)
         with open(uri, "wb") as f:
             f.write(data)
-
