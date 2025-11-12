@@ -2,6 +2,8 @@
 
 This directory contains converters, enrichment plugins, and tools for processing security findings into OCSF format.
 
+> **Note**: For local development setup with PostgreSQL using Podman, see [CONTRIBUTING.md](CONTRIBUTING.md#local-development-setup).
+
 ## Available Scripts
 
 ### sarif_to_ocsf.py
@@ -163,15 +165,13 @@ pip install -r requirements.txt
 
 ## Environment Configuration
 
-For database ingestion, configure connection in `.env`:
+For database ingestion, configure connection using `DATABASE_URL` in `.env`:
 
 ```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=your_database
-DB_USER=your_user
-DB_PASSWORD=your_password
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 ```
+
+**Local Development**: If you're using the Podman setup (see [CONTRIBUTING.md](CONTRIBUTING.md#local-development-setup)), copy `env.example` to `.env` and the database will be automatically configured and started.
 
 ## Testing
 

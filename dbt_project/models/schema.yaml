@@ -8,19 +8,22 @@ models:
       Initial landing zone for raw OCSF JSON data.
 
       This table stores complete OCSF finding documents with minimal transformation.
-      Data is ingested via scripts/ingest_raw_ocsf_findings.py using append-only strategy.
-      Same finding scanned at different times creates separate rows to enable scan-level tracking.
+      Data is ingested via scripts/ingest_raw_ocsf_findings.py using UPSERT strategy.
+      When the same finding_uid is ingested again, the existing record is updated with new data.
 
       **Schema Management**: Managed by dbt
       **Data Management**: Managed by Python ingestion scripts
     config:
       contract:
         enforced: true
+    constraints:
+      - type: primary_key
+        columns: [finding_uid]
     columns:
       - name: finding_uid
         description: |
           Unique identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
-          Not unique across table (same finding scanned multiple times = multiple rows).
+          Primary key - ensures each finding_uid appears only once in the table.
 
           Format validation can be enforced via CHECK constraint added by post-hook.
           The constraint pattern is controlled by 'finding_uid_format_pattern' variable in dbt_project.yml.
@@ -67,7 +70,7 @@ models:
           Unique identifier for the security finding, extracted from OCSF `finding.uid`.
           Not unique across table (same finding scanned multiple times = multiple rows).
 
-          Format validation can be enforced via CHECK constraint added by post-hook.
+          If the UID format is not specified, it will not be enforced, can be enforced via CHECK constraint added by post-hook.
           The constraint pattern is controlled by 'finding_uid_format_pattern' variable.
         data_type: text
         constraints:
@@ -108,10 +111,8 @@ models:
           - type: not_null
 
       - name: finding_status
-        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...)"
+        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...). Optional field - may be null if not provided in source data."
         data_type: text
-        constraints:
-          - type: not_null
 
       - name: finding_activity_name
         description: "Activity name indicating the lifecycle status of the finding (e.g., Create, Update, Close)."
