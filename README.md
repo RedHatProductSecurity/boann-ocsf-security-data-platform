@@ -13,8 +13,8 @@ The Boann OCSF Security Data Platform provides tools and converters for processi
 - **SARIF to OCSF Conversion** - Convert security scan results to OCSF format
 - **Enrichment System** - Extensible plugin architecture for metadata augmentation
 - **Finding UID Generation** - Stable unique identifiers for deduplication
-- **Database Ingestion** - PostgreSQL storage with upsert capabilities
-- **File Monitoring** - Automated directory processing
+- **Database Ingestion** - PostgreSQL storage with append-only INSERT strategy
+- **File Monitoring** - Automated processing from local filesystem or Google Cloud Storage (GCS)
 
 ## Quick Start
 
@@ -25,31 +25,24 @@ python scripts/sarif_to_ocsf.py input.sarif output.ocsf.json
 # Ingest into PostgreSQL
 python scripts/ingest_raw_ocsf_findings.py --input-file findings.ocsf.json
 
-# Monitor directory for automatic processing
+# Monitor directory for automatic processing (local)
 python scripts/ocsf_monitor.py \
+    --storage-backend local \
     --source-folder /path/to/files/ \
     --processed-folder /path/processed/ \
     --failed-folder /path/failed/
+
+# Monitor GCS bucket for automatic processing
+python scripts/ocsf_monitor.py \
+    --storage-backend gcs \
+    --gcs-bucket-name my-bucket \
+    --gcs-source-folder input/ \
+    --gcs-processed-folder processed/ \
+    --gcs-failed-folder failed/ \
+    --local-destination-folder /tmp/OCSF/
 ```
 
 See [scripts/README.md](scripts/README.md) for detailed usage and examples.
-
-## Local Development
-
-To set up a complete local development environment with PostgreSQL and the application containerized:
-
-```bash
-# 1. Copy environment template
-cp env.example .env
-
-# 2. Start the environment (PostgreSQL + Application container)
-./scripts/run_podman.sh
-
-# 3. Access the application container
-podman exec -it boann-app bash
-```
-
-For detailed setup instructions, database configuration, and development workflow, see [CONTRIBUTING.md](scripts/CONTRIBUTING.md).
 
 ## Documentation
 
@@ -63,9 +56,10 @@ For detailed setup instructions, database configuration, and development workflo
 scripts/
 ├── converters/         # Format converters (SARIF → OCSF)
 ├── enrichments/        # Enrichment plugins (UID generation, etc.)
+├── helpers/            # Utility modules (GCS, logging)
 ├── sarif_to_ocsf.py   # Conversion CLI
 ├── ingest_raw_ocsf_findings.py  # Database ingestion
-└── ocsf_monitor.py    # Directory monitoring
+└── ocsf_monitor.py    # File monitoring (local/GCS)
 
 docs/                  # Additional documentation
 ```
@@ -85,7 +79,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 This is an initial release with the following known limitations:
 
 - Not all SARIF fields are converted
-- Database schema is managed via dbt (Data Build Tool) for version-controlled schema definitions
+- Database schema must be created separately (dbt management tooling planned but not yet available)
 - API and data formats subject to change
 - Downstream enrichment required for organization-specific data
 

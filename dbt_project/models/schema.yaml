@@ -8,22 +8,24 @@ models:
       Initial landing zone for raw OCSF JSON data.
 
       This table stores complete OCSF finding documents with minimal transformation.
-      Data is ingested via scripts/ingest_raw_ocsf_findings.py using UPSERT strategy.
-      When the same finding_uid is ingested again, the existing record is updated with new data.
+      Data is ingested via scripts/ingest_raw_ocsf_findings.py using append-only INSERT strategy.
+      Same finding_uid can appear multiple times to preserve all scan data for scan-level tracking.
+
+      **No Deduplication**: Preserves all findings from all scans. Same finding_uid in different
+      contexts creates separate rows:
+      - Different scan times: Finding scanned on Oct 16 and Oct 20 = 2 rows
+      - Different products: Same finding in Product A and Product B = 2 rows
 
       **Schema Management**: Managed by dbt
       **Data Management**: Managed by Python ingestion scripts
     config:
       contract:
         enforced: true
-    constraints:
-      - type: primary_key
-        columns: [finding_uid]
     columns:
       - name: finding_uid
         description: |
-          Unique identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
-          Primary key - ensures each finding_uid appears only once in the table.
+          Identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
+          Not unique across table - same finding_uid can appear multiple times to preserve scan history.
 
           Format validation can be enforced via CHECK constraint added by post-hook.
           The constraint pattern is controlled by 'finding_uid_format_pattern' variable in dbt_project.yml.

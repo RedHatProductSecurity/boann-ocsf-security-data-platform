@@ -37,13 +37,34 @@ For all options: `python ingest_raw_ocsf_findings.py --help`
 
 ### ocsf_monitor.py
 
-Monitor directory for OCSF files and automatically ingest them.
+Monitor local filesystem or Google Cloud Storage (GCS) for OCSF files and automatically ingest them.
 
+**Local Backend:**
 ```bash
 python ocsf_monitor.py \
+    --storage-backend local \
     --source-folder /path/to/files/ \
     --processed-folder /path/processed/ \
     --failed-folder /path/failed/
+```
+
+**GCS Backend:**
+```bash
+# Set GCS credentials (if not running in GCP environment)
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+
+python ocsf_monitor.py \
+    --storage-backend gcs \
+    --gcs-bucket-name my-bucket \
+    --gcs-source-folder OCSF_input/todo/ \
+    --gcs-processed-folder OCSF_input/processed/ \
+    --gcs-failed-folder OCSF_input/failed/ \
+    --local-destination-folder /tmp/OCSF/
+```
+
+**Note**: GCS backend requires `google-cloud-storage` package:
+```bash
+pip install google-cloud-storage
 ```
 
 For all options: `python ocsf_monitor.py --help`
@@ -133,10 +154,13 @@ scripts/
 ├── enrichments/             # Enrichment plugins
 │   ├── base.py
 │   └── finding_uid_generator.py
+├── helpers/                 # Utility modules
+│   ├── gcs_utils.py        # GCS storage utilities
+│   └── logging_utils.py    # Logging configuration
 ├── tests/                   # Unit tests
 ├── sarif_to_ocsf.py        # SARIF conversion CLI
 ├── ingest_raw_ocsf_findings.py  # Database ingestion CLI
-└── ocsf_monitor.py         # Directory monitoring CLI
+└── ocsf_monitor.py         # File monitoring CLI (local/GCS)
 ```
 
 ## Development Setup
