@@ -39,10 +39,11 @@ For all options: `python ingest_raw_ocsf_findings.py --help`
 
 Monitor local filesystem or Google Cloud Storage (GCS) for OCSF files and automatically ingest them.
 
+Storage backend is automatically detected from folder paths (local paths vs `gs://` URIs).
+
 **Local Backend:**
 ```bash
 python ocsf_monitor.py \
-    --storage-backend local \
     --source-folder /path/to/files/ \
     --processed-folder /path/processed/ \
     --failed-folder /path/failed/
@@ -54,13 +55,24 @@ python ocsf_monitor.py \
 export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 
 python ocsf_monitor.py \
-    --storage-backend gcs \
-    --gcs-bucket-name my-bucket \
-    --gcs-source-folder OCSF_input/todo/ \
-    --gcs-processed-folder OCSF_input/processed/ \
-    --gcs-failed-folder OCSF_input/failed/ \
-    --local-destination-folder /tmp/OCSF/
+    --source-folder gs://my-bucket/OCSF_input/todo/ \
+    --processed-folder gs://my-bucket/OCSF_input/processed/ \
+    --failed-folder gs://my-bucket/OCSF_input/failed/ \
+    --local-temp-folder /tmp/OCSF/
 ```
+
+**Optional Schema Validation:**
+```bash
+# Enable OCSF schema validation before ingestion (works with both local and GCS backends)
+python ocsf_monitor.py \
+    --source-folder /path/to/files/ \
+    --processed-folder /path/processed/ \
+    --failed-folder /path/failed/ \
+    --validator /path/to/validate-ocsf-file \
+    --schema-file schemas/ocsf_application_security_posture_finding_1.5.0.schema.json
+```
+
+Files that fail validation will be moved to the failed folder without attempting ingestion.
 
 **Note**: GCS backend requires `google-cloud-storage` package:
 ```bash

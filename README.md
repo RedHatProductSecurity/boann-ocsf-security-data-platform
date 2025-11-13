@@ -25,21 +25,25 @@ python scripts/sarif_to_ocsf.py input.sarif output.ocsf.json
 # Ingest into PostgreSQL
 python scripts/ingest_raw_ocsf_findings.py --input-file findings.ocsf.json
 
-# Monitor directory for automatic processing (local)
+# Monitor local directory for automatic processing
 python scripts/ocsf_monitor.py \
-    --storage-backend local \
     --source-folder /path/to/files/ \
     --processed-folder /path/processed/ \
     --failed-folder /path/failed/
 
-# Monitor GCS bucket for automatic processing
+# Monitor GCS bucket for automatic processing (backend auto-detected from gs:// URIs)
 python scripts/ocsf_monitor.py \
-    --storage-backend gcs \
-    --gcs-bucket-name my-bucket \
-    --gcs-source-folder input/ \
-    --gcs-processed-folder processed/ \
-    --gcs-failed-folder failed/ \
-    --local-destination-folder /tmp/OCSF/
+    --source-folder gs://my-bucket/input/ \
+    --processed-folder gs://my-bucket/processed/ \
+    --failed-folder gs://my-bucket/failed/
+
+# Enable optional OCSF schema validation
+python scripts/ocsf_monitor.py \
+    --source-folder /path/to/files/ \
+    --processed-folder /path/processed/ \
+    --failed-folder /path/failed/ \
+    --validator /path/to/validate-ocsf-file \
+    --schema-file schemas/ocsf_schema.json
 ```
 
 See [scripts/README.md](scripts/README.md) for detailed usage and examples.
@@ -79,7 +83,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 This is an initial release with the following known limitations:
 
 - Not all SARIF fields are converted
-- Database schema must be created separately (dbt management tooling planned but not yet available)
 - API and data formats subject to change
 - Downstream enrichment required for organization-specific data
 

@@ -96,11 +96,9 @@ class BaseToolCLI(ABC):
 
         Override this method if you need custom logging configuration.
         """
-        logging.basicConfig(
-            level=getattr(logging, self.args.log_level.upper(), logging.INFO),
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+        from helpers.logging_utils import setup_logging
+
+        setup_logging(self.args.log_level)
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def validate_arguments(self) -> None:  # noqa: B027

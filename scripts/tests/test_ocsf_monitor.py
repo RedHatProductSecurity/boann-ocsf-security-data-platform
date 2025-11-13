@@ -65,6 +65,8 @@ def mock_args(temp_directories):
     args.source_folder = temp_directories["source_folder"]
     args.processed_folder = temp_directories["processed_folder"]
     args.failed_folder = temp_directories["failed_folder"]
+    args.validator = None
+    args.schema_file = None
     return args
 
 
@@ -215,10 +217,11 @@ def test_process_local_files_mixed_results(reset_globals, mock_args, temp_direct
 def test_validate_arguments_source_not_exists(monitor_cli):
     """Test argument validation fails when source doesn't exist"""
     monitor_cli.args = Mock()
-    monitor_cli.args.storage_backend = "local"
     monitor_cli.args.source_folder = "/nonexistent/path"
     monitor_cli.args.processed_folder = "/tmp/processed"
     monitor_cli.args.failed_folder = "/tmp/failed"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     with pytest.raises(SystemExit):
@@ -232,10 +235,11 @@ def test_validate_arguments_source_not_directory(monitor_cli):
 
     try:
         monitor_cli.args = Mock()
-        monitor_cli.args.storage_backend = "local"
         monitor_cli.args.source_folder = temp_file
         monitor_cli.args.processed_folder = "/tmp/processed"
         monitor_cli.args.failed_folder = "/tmp/failed"
+        monitor_cli.args.validator = None
+        monitor_cli.args.schema_file = None
         monitor_cli.logger = Mock()
 
         with pytest.raises(SystemExit):
@@ -255,10 +259,11 @@ def test_validate_arguments_creates_folders(monitor_cli):
 
     try:
         monitor_cli.args = Mock()
-        monitor_cli.args.storage_backend = "local"
         monitor_cli.args.source_folder = source_folder
         monitor_cli.args.processed_folder = processed_folder
         monitor_cli.args.failed_folder = failed_folder
+        monitor_cli.args.validator = None
+        monitor_cli.args.schema_file = None
         monitor_cli.logger = Mock()
 
         monitor_cli.validate_arguments()
@@ -277,10 +282,14 @@ def test_execute_success(mock_process, mock_ingestor_class, monitor_cli):
     # Mock the process_local_files function
     mock_process.return_value = True
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
-    monitor_cli.args.storage_backend = "local"
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -299,10 +308,14 @@ def test_execute_failure(mock_process, mock_ingestor_class, monitor_cli):
     # Mock the process_local_files function to return failure
     mock_process.return_value = False
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
-    monitor_cli.args.storage_backend = "local"
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -318,10 +331,14 @@ def test_execute_initialization_error(mock_ingestor_class, monitor_cli):
     # Mock ingestor initialization to raise exception
     mock_ingestor_class.side_effect = Exception("Init error")
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
-    monitor_cli.args.storage_backend = "local"
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -338,10 +355,14 @@ def test_execute_registers_signal_handlers(mock_process, mock_ingestor_class, mo
     """Test that execute registers signal handlers"""
     mock_process.return_value = True
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
-    monitor_cli.args.storage_backend = "local"
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
