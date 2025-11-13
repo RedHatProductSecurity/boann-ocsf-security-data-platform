@@ -79,7 +79,7 @@ models:
           - type: not_null
 
       - name: tool_name
-        description: "Name of the security scanning tool that generated the finding (from OCSF `metadata.product.name`)."
+        description: "Name of the security scanning tool that generated the finding (from OCSF `metadata.product_name`)."
         data_type: text
 
       - name: tool_version
@@ -87,7 +87,7 @@ models:
         data_type: text
 
       - name: scan_run_id
-        description: "Explicit identifier for deterministic scan grouping, extracted from OCSF enrichments. Used by generate_scan_key macro with COALESCE fallback to scanned_at. Enables idempotent reingestion and proper grouping of findings from the same scan run."
+        description: "Required explicit identifier for deterministic scan grouping, extracted from OCSF enrichments. Used by generate_scan_key macro. Enables idempotent reingestion and proper grouping of findings from the same scan run."
         data_type: text
         constraints:
           - type: not_null
@@ -115,13 +115,13 @@ models:
           - type: not_null
 
       - name: finding_status
-        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...)."
+        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...)"
         data_type: text
         constraints:
           - type: not_null
 
       - name: enrichments_jira_status_jsonb
-        description: "Optional JSONB containing verbatim Jira status and (optional) Jira resolution of a Jira ticket, extracted from enrichments."
+        description: "Optional JSONB containing verbatim Jira status and (optional) Jira resolution of a Jira ticket"
         data_type: jsonb
 
       - name: finding_activity_name
@@ -132,12 +132,12 @@ models:
         description: "Remediation guidance description extracted from the OCSF remediation object."
         data_type: text
 
-      - name: product_definitions_jsonb
-        description: "JSONB containing product definitions objects associated with the finding. This is a subset of resources specific to product contexts."
+      - name: resources_jsonb
+        description: "JSONB array containing all resource objects associated with the finding from OCSF resources field."
         data_type: jsonb
 
       - name: affected_packages_jsonb
-        description: "JSONB array containing the affected software packages aggregated from all vulnerabilities."
+        description: "JSONB array containing the affected software package"
         data_type: jsonb
 
       - name: vulnerabilities_subset_jsonb
@@ -163,19 +163,11 @@ models:
           - type: not_null
 
       - name: finding_source
-        description: "Source/type of the finding, indicating which process or tool generated it (e.g., SAST, Jira, Manual Testing)."
+        description: "Source/type of the finding, indicating which process generated it."
         data_type: text
         constraints:
           - type: not_null
 
       - name: enrichments_affected_components_jsonb
         description: "Complete affected_components enrichment object as JSONB, including name, value (source system like 'jira'), and data (with components, versions, and fixed_versions arrays)."
-        data_type: jsonb
-
-      - name: resources_jsonb
-        description: "JSONB array containing all resource objects associated with the finding from OCSF resources field."
-        data_type: jsonb
-
-      - name: enrichments_jsonb
-        description: "JSONB array containing all enrichment objects from OCSF enrichments field. Downstream projects can extract specific enrichments as needed."
         data_type: jsonb
