@@ -113,12 +113,16 @@ models:
         data_type: text
         constraints:
           - type: not_null
+        data_tests:
+          - severity_levels
 
       - name: finding_status
         description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...)"
         data_type: text
         constraints:
           - type: not_null
+        data_tests:
+          - status_name
 
       - name: enrichments_jira_status_jsonb
         description: "Optional JSONB containing verbatim Jira status and (optional) Jira resolution of a Jira ticket"
