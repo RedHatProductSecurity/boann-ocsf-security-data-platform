@@ -10,6 +10,7 @@
         post_hook=[
             "{{ add_finding_uid_constraint() }}",
             "{{ add_new_indexes([
+                {'name': 'idx_raw_ocsf_findings_finding_uid', 'columns': ['finding_uid'], 'type': 'btree'},
                 {'name': 'idx_raw_ocsf_findings_loaded_at', 'columns': ['loaded_at'], 'type': 'btree'}
             ]) }}"
         ]

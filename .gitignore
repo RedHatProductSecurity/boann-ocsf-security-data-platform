@@ -1,0 +1,49 @@
+### Vim ###
+# Swap
+[._]*.s[a-v][a-z]
+!*.svg  # comment out if you don't need vector files
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+.env/
+.env.*  # env files with extensions
+
+# Environement file
+.env
+
+# Alembic
+alembic/versions/*.pyc
+
+# Pytest cache
+.pytest_cache/
+
+# Logs
+*.log
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.code-workspace
+
+# Data
+data/
+*.sqlite
+
+# Ignore dbt compiled and run artifacts
+dbt_project/target/
+dbt_project/logs/

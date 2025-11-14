@@ -8,22 +8,24 @@ models:
       Initial landing zone for raw OCSF JSON data.
 
       This table stores complete OCSF finding documents with minimal transformation.
-      Data is ingested via scripts/ingest_raw_ocsf_findings.py using UPSERT strategy.
-      When the same finding_uid is ingested again, the existing record is updated with new data.
+      Data is ingested via scripts/ingest_raw_ocsf_findings.py using append-only INSERT strategy.
+      Same finding_uid can appear multiple times to preserve all scan data for scan-level tracking.
+
+      **No Deduplication**: Preserves all findings from all scans. Same finding_uid in different
+      contexts creates separate rows:
+      - Different scan times: Finding scanned on Oct 16 and Oct 20 = 2 rows
+      - Different products: Same finding in Product A and Product B = 2 rows
 
       **Schema Management**: Managed by dbt
       **Data Management**: Managed by Python ingestion scripts
     config:
       contract:
         enforced: true
-    constraints:
-      - type: primary_key
-        columns: [finding_uid]
     columns:
       - name: finding_uid
         description: |
-          Unique identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
-          Primary key - ensures each finding_uid appears only once in the table.
+          Identifier for the OCSF finding, extracted from finding_info.uid in the OCSF JSON document.
+          Not unique across table - same finding_uid can appear multiple times to preserve scan history.
 
           Format validation can be enforced via CHECK constraint added by post-hook.
           The constraint pattern is controlled by 'finding_uid_format_pattern' variable in dbt_project.yml.
@@ -77,7 +79,7 @@ models:
           - type: not_null
 
       - name: tool_name
-        description: "Name of the security scanning tool that generated the finding (from OCSF `metadata.product.name`)."
+        description: "Name of the security scanning tool that generated the finding (from OCSF `metadata.product_name`)."
         data_type: text
 
       - name: tool_version
@@ -85,8 +87,10 @@ models:
         data_type: text
 
       - name: scan_run_id
-        description: "Explicit identifier for deterministic scan grouping, extracted from OCSF enrichments. Used by generate_scan_key macro with COALESCE fallback to scanned_at. Enables idempotent reingestion and proper grouping of findings from the same scan run."
+        description: "Required explicit identifier for deterministic scan grouping, extracted from OCSF enrichments. Used by generate_scan_key macro. Enables idempotent reingestion and proper grouping of findings from the same scan run."
         data_type: text
+        constraints:
+          - type: not_null
 
       - name: detected_at
         description: "Timestamp (UTC) when the finding was originally detected."
@@ -109,10 +113,20 @@ models:
         data_type: text
         constraints:
           - type: not_null
+        data_tests:
+          - severity_levels
 
       - name: finding_status
-        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...). Optional field - may be null if not provided in source data."
+        description: "Current OCSF status of the finding, in text format (e.g., New, In Progress, Suppressed, Resolved, ...)"
         data_type: text
+        constraints:
+          - type: not_null
+        data_tests:
+          - status_name
+
+      - name: enrichments_jira_status_jsonb
+        description: "Optional JSONB containing verbatim Jira status and (optional) Jira resolution of a Jira ticket"
+        data_type: jsonb
 
       - name: finding_activity_name
         description: "Activity name indicating the lifecycle status of the finding (e.g., Create, Update, Close)."
@@ -127,7 +141,7 @@ models:
         data_type: jsonb
 
       - name: affected_packages_jsonb
-        description: "JSONB array containing the affected software packages aggregated from all vulnerabilities."
+        description: "JSONB array containing the affected software package"
         data_type: jsonb
 
       - name: vulnerabilities_subset_jsonb
@@ -152,6 +166,12 @@ models:
         constraints:
           - type: not_null
 
-      - name: enrichments_jsonb
-        description: "JSONB array containing all enrichment objects from OCSF enrichments field. Downstream projects can extract specific enrichments as needed."
+      - name: finding_source
+        description: "Source/type of the finding, indicating which process generated it."
+        data_type: text
+        constraints:
+          - type: not_null
+
+      - name: enrichments_affected_components_jsonb
+        description: "Complete affected_components enrichment object as JSONB, including name, value (source system like 'jira'), and data (with components, versions, and fixed_versions arrays)."
         data_type: jsonb

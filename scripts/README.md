@@ -37,13 +37,46 @@ For all options: `python ingest_raw_ocsf_findings.py --help`
 
 ### ocsf_monitor.py
 
-Monitor directory for OCSF files and automatically ingest them.
+Monitor local filesystem or Google Cloud Storage (GCS) for OCSF files and automatically ingest them.
 
+Storage backend is automatically detected from folder paths (local paths vs `gs://` URIs).
+
+**Local Backend:**
 ```bash
 python ocsf_monitor.py \
     --source-folder /path/to/files/ \
     --processed-folder /path/processed/ \
     --failed-folder /path/failed/
+```
+
+**GCS Backend:**
+```bash
+# Set GCS credentials (if not running in GCP environment)
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+
+python ocsf_monitor.py \
+    --source-folder gs://my-bucket/OCSF_input/todo/ \
+    --processed-folder gs://my-bucket/OCSF_input/processed/ \
+    --failed-folder gs://my-bucket/OCSF_input/failed/ \
+    --local-temp-folder /tmp/OCSF/
+```
+
+**Optional Schema Validation:**
+```bash
+# Enable OCSF schema validation before ingestion (works with both local and GCS backends)
+python ocsf_monitor.py \
+    --source-folder /path/to/files/ \
+    --processed-folder /path/processed/ \
+    --failed-folder /path/failed/ \
+    --validator /path/to/validate-ocsf-file \
+    --schema-file schemas/ocsf_application_security_posture_finding_1.5.0.schema.json
+```
+
+Files that fail validation will be moved to the failed folder without attempting ingestion.
+
+**Note**: GCS backend requires `google-cloud-storage` package:
+```bash
+pip install google-cloud-storage
 ```
 
 For all options: `python ocsf_monitor.py --help`
@@ -133,10 +166,13 @@ scripts/
 ├── enrichments/             # Enrichment plugins
 │   ├── base.py
 │   └── finding_uid_generator.py
+├── helpers/                 # Utility modules
+│   ├── gcs_utils.py        # GCS storage utilities
+│   └── logging_utils.py    # Logging configuration
 ├── tests/                   # Unit tests
 ├── sarif_to_ocsf.py        # SARIF conversion CLI
 ├── ingest_raw_ocsf_findings.py  # Database ingestion CLI
-└── ocsf_monitor.py         # Directory monitoring CLI
+└── ocsf_monitor.py         # File monitoring CLI (local/GCS)
 ```
 
 ## Development Setup

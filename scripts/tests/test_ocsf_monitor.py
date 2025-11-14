@@ -20,7 +20,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import ocsf_monitor
-from ocsf_monitor import MonitorCLI, process_local_files, signal_handler
+from ocsf_monitor import MonitorCLI, process_local_files, signal_handler, validate_ocsf_file
 
 
 # Fixtures
@@ -65,6 +65,8 @@ def mock_args(temp_directories):
     args.source_folder = temp_directories["source_folder"]
     args.processed_folder = temp_directories["processed_folder"]
     args.failed_folder = temp_directories["failed_folder"]
+    args.validator = None
+    args.schema_file = None
     return args
 
 
@@ -216,6 +218,10 @@ def test_validate_arguments_source_not_exists(monitor_cli):
     """Test argument validation fails when source doesn't exist"""
     monitor_cli.args = Mock()
     monitor_cli.args.source_folder = "/nonexistent/path"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     with pytest.raises(SystemExit):
@@ -230,6 +236,10 @@ def test_validate_arguments_source_not_directory(monitor_cli):
     try:
         monitor_cli.args = Mock()
         monitor_cli.args.source_folder = temp_file
+        monitor_cli.args.processed_folder = "/tmp/processed"
+        monitor_cli.args.failed_folder = "/tmp/failed"
+        monitor_cli.args.validator = None
+        monitor_cli.args.schema_file = None
         monitor_cli.logger = Mock()
 
         with pytest.raises(SystemExit):
@@ -252,6 +262,8 @@ def test_validate_arguments_creates_folders(monitor_cli):
         monitor_cli.args.source_folder = source_folder
         monitor_cli.args.processed_folder = processed_folder
         monitor_cli.args.failed_folder = failed_folder
+        monitor_cli.args.validator = None
+        monitor_cli.args.schema_file = None
         monitor_cli.logger = Mock()
 
         monitor_cli.validate_arguments()
@@ -270,9 +282,14 @@ def test_execute_success(mock_process, mock_ingestor_class, monitor_cli):
     # Mock the process_local_files function
     mock_process.return_value = True
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -291,9 +308,14 @@ def test_execute_failure(mock_process, mock_ingestor_class, monitor_cli):
     # Mock the process_local_files function to return failure
     mock_process.return_value = False
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -309,9 +331,14 @@ def test_execute_initialization_error(mock_ingestor_class, monitor_cli):
     # Mock ingestor initialization to raise exception
     mock_ingestor_class.side_effect = Exception("Init error")
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -328,9 +355,14 @@ def test_execute_registers_signal_handlers(mock_process, mock_ingestor_class, mo
     """Test that execute registers signal handlers"""
     mock_process.return_value = True
 
-    # Setup CLI with mock args
+    # Setup CLI with mock args (local backend auto-detected from paths)
     monitor_cli.args = Mock()
+    monitor_cli.args.source_folder = "/tmp/source"
+    monitor_cli.args.processed_folder = "/tmp/processed"
+    monitor_cli.args.failed_folder = "/tmp/failed"
     monitor_cli.args.schema = "test_schema"
+    monitor_cli.args.validator = None
+    monitor_cli.args.schema_file = None
     monitor_cli.logger = Mock()
 
     # Execute
@@ -340,6 +372,147 @@ def test_execute_registers_signal_handlers(mock_process, mock_ingestor_class, mo
     signal_calls = [call[0] for call in mock_signal.call_args_list]
     assert (signal.SIGINT, ocsf_monitor.signal_handler) in signal_calls
     assert (signal.SIGTERM, ocsf_monitor.signal_handler) in signal_calls
+
+
+# validate_ocsf_file Tests
+@patch("ocsf_monitor.subprocess.run")
+def test_validate_ocsf_file_success(mock_run):
+    """Test validate_ocsf_file with successful validation"""
+    # Mock successful validation
+    mock_result = Mock()
+    mock_result.returncode = 0
+    mock_run.return_value = mock_result
+
+    mock_logger = Mock()
+    file_path = "/tmp/test.ocsf.json"
+    validator_cmd = "/usr/bin/validate-ocsf-file"
+    schema_file = "/tmp/schema.json"
+
+    result = validate_ocsf_file(file_path, validator_cmd, schema_file, mock_logger)
+
+    # Assertions
+    assert result is True
+    mock_run.assert_called_once_with(
+        [validator_cmd, "--schema-file", schema_file, "--data-file", file_path],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    mock_logger.debug.assert_called()
+
+
+@patch("ocsf_monitor.subprocess.run")
+def test_validate_ocsf_file_validation_failure(mock_run):
+    """Test validate_ocsf_file with validation failure (invalid OCSF file)"""
+    # Mock validation failure
+    mock_run.side_effect = subprocess.CalledProcessError(
+        returncode=1,
+        cmd=["validate-ocsf-file"],
+        output="Validation failed",
+        stderr="Error: Invalid OCSF format",
+    )
+
+    mock_logger = Mock()
+    file_path = "/tmp/invalid.ocsf.json"
+    validator_cmd = "/usr/bin/validate-ocsf-file"
+    schema_file = "/tmp/schema.json"
+
+    result = validate_ocsf_file(file_path, validator_cmd, schema_file, mock_logger)
+
+    # Assertions
+    assert result is False
+    mock_logger.error.assert_called()
+
+
+@patch("ocsf_monitor.subprocess.run")
+def test_validate_ocsf_file_with_stdout_and_stderr(mock_run):
+    """Test validate_ocsf_file logs stdout and stderr on failure"""
+    # Mock validation failure with both stdout and stderr
+    error = subprocess.CalledProcessError(
+        returncode=1, cmd=["validate-ocsf-file"], output="stdout output", stderr="stderr output"
+    )
+    error.stdout = "stdout output"
+    error.stderr = "stderr output"
+    mock_run.side_effect = error
+
+    mock_logger = Mock()
+    file_path = "/tmp/test.ocsf.json"
+    validator_cmd = "/usr/bin/validate-ocsf-file"
+    schema_file = "/tmp/schema.json"
+
+    result = validate_ocsf_file(file_path, validator_cmd, schema_file, mock_logger)
+
+    # Assertions
+    assert result is False
+    # Check that error logs include stdout and stderr
+    error_calls = [str(call) for call in mock_logger.error.call_args_list]
+    assert any("stdout output" in str(call) for call in error_calls)
+    assert any("stderr output" in str(call) for call in error_calls)
+
+
+@patch("ocsf_monitor.subprocess.run")
+def test_validate_ocsf_file_validator_not_found(mock_run):
+    """Test validate_ocsf_file when validator command is not found"""
+    # Mock FileNotFoundError (command not found)
+    mock_run.side_effect = FileNotFoundError("Validator command not found")
+
+    mock_logger = Mock()
+    file_path = "/tmp/test.ocsf.json"
+    validator_cmd = "/usr/bin/nonexistent-validator"
+    schema_file = "/tmp/schema.json"
+
+    # Should return False and log error (graceful handling)
+    result = validate_ocsf_file(file_path, validator_cmd, schema_file, mock_logger)
+
+    assert result is False
+    # Check that error was logged
+    mock_logger.error.assert_called()
+    # Verify error message mentions validator not found
+    error_calls = [str(call) for call in mock_logger.error.call_args_list]
+    assert any("not found" in str(call).lower() for call in error_calls)
+
+
+@patch("ocsf_monitor.subprocess.run")
+def test_validate_ocsf_file_with_empty_output(mock_run):
+    """Test validate_ocsf_file with validation failure but no output"""
+    # Mock validation failure with no stdout/stderr
+    error = subprocess.CalledProcessError(returncode=1, cmd=["validate-ocsf-file"])
+    error.stdout = None
+    error.stderr = None
+    mock_run.side_effect = error
+
+    mock_logger = Mock()
+    file_path = "/tmp/test.ocsf.json"
+    validator_cmd = "/usr/bin/validate-ocsf-file"
+    schema_file = "/tmp/schema.json"
+
+    result = validate_ocsf_file(file_path, validator_cmd, schema_file, mock_logger)
+
+    # Assertions
+    assert result is False
+    # Should still log error even without stdout/stderr
+    mock_logger.error.assert_called()
+
+
+@patch("ocsf_monitor.subprocess.run")
+def test_validate_ocsf_file_logs_command(mock_run):
+    """Test that validate_ocsf_file logs the validation command"""
+    # Mock successful validation
+    mock_result = Mock()
+    mock_result.returncode = 0
+    mock_run.return_value = mock_result
+
+    mock_logger = Mock()
+    file_path = "/tmp/test.ocsf.json"
+    validator_cmd = "/usr/bin/validate-ocsf-file"
+    schema_file = "/tmp/schema.json"
+
+    validate_ocsf_file(file_path, validator_cmd, schema_file, mock_logger)
+
+    # Check that debug log includes the command
+    debug_calls = [str(call) for call in mock_logger.debug.call_args_list]
+    assert any("Running validation" in str(call) for call in debug_calls)
+    assert any(validator_cmd in str(call) for call in debug_calls)
 
 
 # CLI Integration Tests

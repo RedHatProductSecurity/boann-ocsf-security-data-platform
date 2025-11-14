@@ -18,6 +18,14 @@
 WITH source_data AS (
     SELECT *
     FROM {{ ref('raw_ocsf_findings') }} AS raw
+    WHERE 1=1
+    {% if is_incremental() %}
+        -- Incremental filter: process only records loaded after the latest processed timestamp.
+        AND loaded_at > (
+            SELECT COALESCE(MAX(staging_loaded_at), '1970-01-01'::timestamptz)
+            FROM {{ this }}
+        )
+    {% endif %}
 )
 
 SELECT
@@ -55,7 +63,7 @@ SELECT
     -- Extract remediation guidance if available
     raw_ocsf_json -> 'remediation' ->> 'desc' AS finding_remediation,
 
-    -- Extract resources array as JSONB (generic - no filtering)
+    -- Extract complete resources array as JSONB (no filtering)
     COALESCE(raw_ocsf_json -> 'resources', '[]'::jsonb) AS resources_jsonb,
 
     -- Aggregate all affected_packages from all vulnerabilities into a single JSONB array
@@ -126,19 +134,29 @@ SELECT
         ) AS all_references
     ) AS finding_references,
 
-    -- Extract complete enrichments array as JSONB (generic - no filtering)
-    COALESCE(raw_ocsf_json -> 'enrichments', '[]'::jsonb) AS enrichments_jsonb
+    -- Extract enrichment source
+    (
+        SELECT obj.value ->> 'value'
+        FROM jsonb_array_elements(COALESCE(raw_ocsf_json -> 'enrichments', '[]'::jsonb)) AS obj
+        WHERE obj.value ->> 'name' = 'rh_sdlc_source'
+        LIMIT 1
+    ) AS finding_source,
+
+    -- Extract complete affected_components enrichment object as JSONB
+    (
+        SELECT obj.value
+        FROM jsonb_array_elements(COALESCE(raw_ocsf_json -> 'enrichments', '[]'::jsonb)) AS obj
+        WHERE obj.value ->> 'name' = 'affected_components'
+        LIMIT 1
+    ) AS enrichments_affected_components_jsonb,
+
+    -- Extract Jira status (status + resolution) enrichment object as JSONB
+    (
+        SELECT obj.value
+        FROM jsonb_array_elements(COALESCE(raw_ocsf_json -> 'enrichments', '[]'::jsonb)) AS obj
+        WHERE obj.value ->> 'name' = 'jira_status'
+        LIMIT 1
+    ) AS enrichments_jira_status_jsonb
 
 
 FROM source_data raw
-
-WHERE 1=1 -- Base condition for the WHERE clause
-
-{% if is_incremental() %}
-    -- Incremental filter: process only records loaded after the latest processed timestamp.
-    AND loaded_at > (
-        SELECT COALESCE(MAX(staging_loaded_at), '1970-01-01'::timestamptz)
-        FROM {{ this }}
-    )
-{% endif %}
-
