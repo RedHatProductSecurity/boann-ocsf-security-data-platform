@@ -76,8 +76,9 @@ SELECT
         ) AS all_pkgs
     ) AS affected_packages_jsonb,
 
-    -- Extract vulnerabilities with their affected_code and affected_packages relationship preserved
-    -- A finding can have multiple vulnerabilities, each with its own file location and affected components
+    -- Extract OCSF vulnerabilities array with affected_code and affected_packages relationship preserved
+    -- Note: OCSF uses "vulnerabilities" to represent both CVEs and CWEs
+    -- A finding can have multiple entries in vulnerabilities array, each with its own file location and affected components
     -- Keeping these together ensures we know which file/line belongs to which component
     -- Example: [{affected_code: {file: "api.py", line: 10}, affected_packages: [{name: "component-a"}]}]
     (
@@ -92,19 +93,19 @@ SELECT
            OR vuln.value -> 'affected_code' IS NOT NULL
     ) AS vulnerabilities_subset_jsonb,
 
-    -- Aggregate all CWEs from all vulnerabilities into a single JSONB array
+    -- Aggregate all CWEs from OCSF vulnerabilities array into a single JSONB array
     -- Includes both direct CWEs and CWEs related to CVEs
     (
         SELECT jsonb_agg(DISTINCT cwe_id)
         FROM (
-            -- Direct CWEs from vulnerability level (object format)
+            -- Direct CWEs from OCSF vulnerabilities entry (object format)
             SELECT vuln.value -> 'cwe' ->> 'uid' AS cwe_id
             FROM jsonb_array_elements(COALESCE(raw_ocsf_json -> 'vulnerabilities', '[]'::jsonb)) AS vuln
             WHERE vuln.value -> 'cwe' ->> 'uid' IS NOT NULL
 
             UNION ALL
 
-            -- CWEs from related_cwes within CVEs
+            -- CWEs from related_cwes within CVEs in OCSF vulnerabilities array
             SELECT related_cwe.value ->> 'uid' AS cwe_id
             FROM jsonb_array_elements(COALESCE(raw_ocsf_json -> 'vulnerabilities', '[]'::jsonb)) AS vuln,
                  jsonb_array_elements(COALESCE(vuln.value -> 'cve' -> 'related_cwes', '[]'::jsonb)) AS related_cwe
@@ -114,7 +115,7 @@ SELECT
         WHERE cwe_id IS NOT NULL
     ) AS finding_cwes,
 
-    -- Aggregate all CVEs from all vulnerabilities into a single JSONB array
+    -- Aggregate all CVEs from OCSF vulnerabilities array into a single JSONB array
     (
         SELECT jsonb_agg(DISTINCT cve_id)
         FROM (
@@ -124,7 +125,7 @@ SELECT
         ) AS all_cves
     ) AS finding_cves,
 
-    -- Aggregate all references from all vulnerabilities into a single JSONB array
+    -- Aggregate all references from OCSF vulnerabilities array into a single JSONB array
     (
         SELECT jsonb_agg(DISTINCT reference_url)
         FROM (

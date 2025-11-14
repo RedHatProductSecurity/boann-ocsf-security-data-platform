@@ -55,6 +55,11 @@ models:
       Staging model that extracts and standardizes raw OCSF JSON data from landing.raw_ocsf_findings.
       Preserves all findings from all scans without deduplication to enable scan-level tracking.
 
+      **OCSF Terminology Note**: In OCSF schema, the term "vulnerabilities" is used broadly to represent
+      both CVEs (Common Vulnerabilities and Exposures) and CWEs (Common Weakness Enumeration). This model
+      extracts data from the OCSF vulnerabilities array, separating CVEs and CWEs into distinct fields
+      for downstream analysis.
+
       **No Deduplication**: Uses append-only strategy without unique_key constraint. Same finding_uid
       in different contexts creates separate rows:
       - Different scan times: SQL injection in curl-7.61.1 scanned on Oct 16 and Oct 20 = 2 rows
@@ -145,19 +150,19 @@ models:
         data_type: jsonb
 
       - name: vulnerabilities_subset_jsonb
-        description: "JSONB array containing vulnerabilities with their affected_code and affected_packages relationship preserved. Each vulnerability includes file location (path, line number) and associated components. This subset ensures the relationship between file locations and components is maintained for instance-level tracking."
+        description: "JSONB array from OCSF vulnerabilities field (note: OCSF uses 'vulnerabilities' to represent both CVEs and CWEs). Contains vulnerability objects with their affected_code and affected_packages relationship preserved. Each vulnerability includes file location (path, line number) and associated components. This subset ensures the relationship between file locations and components is maintained for instance-level tracking."
         data_type: jsonb
 
       - name: finding_cwes
-        description: "JSONB array of CWE (Common Weakness Enumeration) identifiers aggregated from all vulnerabilities, including both direct CWEs and CVE-related CWEs."
+        description: "JSONB array of CWE (Common Weakness Enumeration) identifiers extracted from OCSF vulnerabilities array, including both direct CWEs and CVE-related CWEs."
         data_type: jsonb
 
       - name: finding_cves
-        description: "JSONB array of CVE (Common Vulnerabilities and Exposures) identifiers aggregated from all vulnerabilities."
+        description: "JSONB array of CVE (Common Vulnerabilities and Exposures) identifiers extracted from OCSF vulnerabilities array."
         data_type: jsonb
 
       - name: finding_references
-        description: "JSONB array of reference URLs aggregated from all vulnerabilities for additional information and context."
+        description: "JSONB array of reference URLs extracted from OCSF vulnerabilities array for additional information and context."
         data_type: jsonb
 
       - name: staging_loaded_at
