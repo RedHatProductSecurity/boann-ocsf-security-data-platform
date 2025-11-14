@@ -175,7 +175,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         # Extract finding info
         finding_info = self._extract_finding_info(result, created_time, rules_lookup)
 
-        # Extract vulnerabilities
+        # Extract OCSF vulnerabilities (includes CWEs and location info)
         vulnerabilities = self._extract_vulnerabilities(result, rules_lookup)
 
         # Extract enrichments (fingerprints)
@@ -367,7 +367,10 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
 
     def _extract_vulnerabilities(self, result: dict[str, Any], rules_lookup: dict[str, dict]) -> dict[str, Any] | None:
         """
-        Extract vulnerability information from SARIF result.
+        Extract vulnerability information from SARIF result for OCSF vulnerabilities array.
+
+        Note: OCSF uses "vulnerabilities" to represent both CVEs and CWEs. This method
+        extracts CWE and location information to populate the OCSF vulnerabilities array.
 
         Args:
             result: SARIF result object

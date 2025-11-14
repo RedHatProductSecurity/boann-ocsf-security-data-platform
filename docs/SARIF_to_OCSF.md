@@ -130,6 +130,8 @@ The converter extracts information about the scanning tool from SARIF:
 
 ### Vulnerability Details
 
+**OCSF Terminology Note**: In OCSF schema, the term "vulnerabilities" is used broadly to represent both traditional CVEs (Common Vulnerabilities and Exposures) and CWEs (Common Weakness Enumeration). This converter populates the OCSF `vulnerabilities` array with CWE and location information extracted from SARIF results.
+
 If the SARIF result includes CWE or location information, this is added:
 
 - **vulnerabilities[0].cwe.uid**: CWE identifier
