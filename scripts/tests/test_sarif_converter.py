@@ -61,7 +61,7 @@ class TestSARIFConverterMethods:
                 {"name": "TestTool", "version": "1.2.3"},
             ),
             ("missing_version", {"tool": {"driver": {"name": "TestTool"}}}, {"name": "TestTool"}),
-            ("missing_name_defaults_to_unknown", {"tool": {"driver": {}}}, {"name": "Unknown"}),
+            ("missing_name_defaults_to_unknown", {"tool": {"driver": {}}}, {"name": "UNKNOWN"}),
         ],
     )
     def test_extract_tool_metadata(self, converter, scenario, run, expected_metadata):
@@ -116,9 +116,11 @@ class TestSARIFConverterMethods:
 
         assert vulnerability is not None
         assert vulnerability["cwe"]["uid"] == "CWE-457"
-        assert vulnerability["affected_code"]["file"] == "src/main.c"
-        assert vulnerability["affected_code"]["start_line"] == 42
-        assert vulnerability["affected_code"]["end_line"] == 42
+        assert vulnerability["affected_code"][0]["file"]["name"] == "main.c"
+        assert vulnerability["affected_code"][0]["file"]["path"] == "src/main.c"
+        assert vulnerability["affected_code"][0]["file"]["type_id"] == 1
+        assert vulnerability["affected_code"][0]["start_line"] == 42
+        assert vulnerability["affected_code"][0]["end_line"] == 42
 
     def test_extract_vulnerabilities_cwe_from_rule(self, converter):
         """Test vulnerability extraction with CWE from rule properties."""
@@ -137,12 +139,30 @@ class TestSARIFConverterMethods:
         assert vulnerability is not None
         assert vulnerability["cwe"]["uid"] == "CWE-457, CWE-789"
 
-    def test_extract_vulnerabilities_empty(self, converter):
-        """Test vulnerability extraction returns None when no data."""
+    def test_extract_vulnerabilities_returns_none_without_data(self, converter):
+        """Test vulnerability extraction returns None when no CWE/CVE or location found."""
         result = {"ruleId": "TEST-001"}
         vulnerability = converter._extract_vulnerabilities(result, {})
 
         assert vulnerability is None
+
+    def test_extract_vulnerabilities_with_location_but_no_cwe(self, converter):
+        """Test vulnerability extraction sets CWE to UNKNOWN when location present but no CWE."""
+        result = {
+            "ruleId": "TEST-001",
+            "locations": [{
+                "physicalLocation": {
+                    "artifactLocation": {"uri": "src/main.c"},
+                    "region": {"startLine": 42, "endLine": 43}
+                }
+            }]
+        }
+        vulnerability = converter._extract_vulnerabilities(result, {})
+
+        assert vulnerability is not None
+        assert vulnerability["cwe"]["uid"] == "UNKNOWN"  # CWE: UNKNOWN added to satisfy schema
+        assert "affected_code" in vulnerability
+        assert vulnerability["affected_code"][0]["file"]["path"] == "src/main.c"
 
     def test_extract_enrichments_with_fingerprints(self, converter):
         """Test enrichment extraction with fingerprints."""
@@ -240,28 +260,36 @@ class TestSARIFConverterMethods:
         assert isinstance(created_time, int)
         assert created_time > 0
 
-    @pytest.mark.parametrize(
-        "scenario,run,expected_identifier",
-        [
-            ("automation_details_id", {"automationDetails": {"id": "CI-BUILD-12345"}}, "CI-BUILD-12345"),
-            (
-                "automation_details_guid",
-                {"automationDetails": {"guid": "550e8400-e29b-41d4-a716-446655440000"}},
-                "550e8400-e29b-41d4-a716-446655440000",
-            ),
-            (
-                "id_preferred_over_guid",
-                {"automationDetails": {"id": "BUILD-001", "guid": "550e8400-e29b-41d4-a716-446655440000"}},
-                "BUILD-001",
-            ),
-            (
-                "fallback_to_tool_and_timestamp",
-                {"tool": {"driver": {"name": "csmock"}}, "invocations": [{"startTimeUtc": "2024-01-15T10:30:00Z"}]},
-                "csmock_run_2024-01-15T10:30:00Z",
-            ),
-            ("no_identifier_available", {"tool": {"driver": {"name": "TestTool"}}}, None),
-        ],
-    )
+    @pytest.mark.parametrize("scenario,run,expected_identifier", [
+        (
+            'automation_details_id',
+            {'automationDetails': {'id': 'CI-BUILD-12345'}},
+            'CI-BUILD-12345'
+        ),
+        (
+            'automation_details_guid',
+            {'automationDetails': {'guid': '550e8400-e29b-41d4-a716-446655440000'}},
+            '550e8400-e29b-41d4-a716-446655440000'
+        ),
+        (
+            'id_preferred_over_guid',
+            {'automationDetails': {'id': 'BUILD-001', 'guid': '550e8400-e29b-41d4-a716-446655440000'}},
+            'BUILD-001'
+        ),
+        (
+            'fallback_to_tool_and_timestamp',
+            {
+                'tool': {'driver': {'name': 'csmock'}},
+                'invocations': [{'startTimeUtc': '2024-01-15T10:30:00Z'}]
+            },
+            'csmock_run_2024-01-15T10:30:00Z'
+        ),
+        (
+            'no_identifier_available',
+            {'tool': {'driver': {'name': 'TestTool'}}},
+            None
+        ),
+    ])
     def test_extract_scan_run_id(self, converter, scenario, run, expected_identifier):
         """Test scan run ID extraction from various SARIF run scenarios."""
         scan_run_id = converter._extract_scan_run_id(run)
@@ -287,6 +315,12 @@ class TestSARIFIntegration(unittest.TestCase):
         self.assertGreater(len(findings), 0)
         self.assertIn("finding_info", findings[0])
         self.assertIn("metadata", findings[0])
+
+        # Verify status fields are set correctly
+        self.assertIn("status", findings[0])
+        self.assertEqual(findings[0]["status"], "New")
+        self.assertIn("status_id", findings[0])
+        self.assertEqual(findings[0]["status_id"], 1)  # StatusID.New = 1
 
     def test_conversion_with_enrichments(self):
         """Test conversion with enrichments applied."""
@@ -375,16 +409,26 @@ class TestSARIFIntegration(unittest.TestCase):
         """Test that scan_metadata enrichment is automatically added when scan_run_id is extracted."""
         sarif_content = {
             "version": "2.1.0",
-            "runs": [
-                {
-                    "tool": {"driver": {"name": "TestTool", "version": "1.0.0"}},
-                    "automationDetails": {"id": "CI-BUILD-12345"},
-                    "results": [{"ruleId": "TEST-001", "level": "error", "message": {"text": "Test finding"}}],
-                }
-            ],
+            "runs": [{
+                "tool": {
+                    "driver": {
+                        "name": "TestTool",
+                        "version": "1.0.0"
+                    }
+                },
+                "automationDetails": {
+                    "id": "CI-BUILD-12345"
+                },
+                "results": [{
+                    "ruleId": "TEST-001",
+                    "level": "error",
+                    "message": {"text": "Test finding"},
+                    "properties": {"cwe": "CWE-123"}
+                }]
+            }]
         }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sarif", delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.sarif', delete=False) as f:
             sarif_file = f.name
             json.dump(sarif_content, f)
 
@@ -393,12 +437,18 @@ class TestSARIFIntegration(unittest.TestCase):
             findings = converter.convert_file(sarif_file)
 
             self.assertGreater(len(findings), 0)
-            self.assertIn("enrichments", findings[0])
+            self.assertIn('enrichments', findings[0])
 
-            scan_metadata_enrichments = [e for e in findings[0]["enrichments"] if e.get("name") == "scan_metadata"]
+            scan_metadata_enrichments = [
+                e for e in findings[0]['enrichments']
+                if e.get('name') == 'scan_metadata'
+            ]
 
             self.assertEqual(len(scan_metadata_enrichments), 1)
-            self.assertEqual(scan_metadata_enrichments[0]["data"]["scan_run_id"], "CI-BUILD-12345")
+            self.assertEqual(
+                scan_metadata_enrichments[0]['data']['scan_run_id'],
+                'CI-BUILD-12345'
+            )
         finally:
             if Path(sarif_file).exists():
                 Path(sarif_file).unlink()

@@ -46,6 +46,19 @@ class BaseOCSFConverter(ABC):
     ACTIVITY_NAME = "Update"
     OCSF_VERSION = "1.5.0"
 
+    # Default value for unknown/missing fields
+    UNKNOWN = "UNKNOWN"
+
+    # OCSF file type_id mapping
+    # See: https://schema.ocsf.io/1.5.0/objects/file
+    FILE_TYPE_REGULAR = 1  # Regular File
+    FILE_TYPE_FOLDER = 2  # Folder
+    FILE_TYPE_CHARACTER_DEVICE = 3  # Character Device
+    FILE_TYPE_BLOCK_DEVICE = 4  # Block Device
+    FILE_TYPE_PIPE = 5  # Local Socket
+    FILE_TYPE_SYMBOLIC_LINK = 6  # Symbolic Link
+    FILE_TYPE_UNKNOWN = 99  # Unknown
+
     def __init__(self, enrichments: list[EnrichmentPlugin] | None = None):
         """
         Initialize the converter.
