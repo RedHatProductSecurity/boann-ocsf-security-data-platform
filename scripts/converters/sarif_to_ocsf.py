@@ -193,6 +193,8 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             "time": int(datetime.now().timestamp() * 1000),
             "severity_id": severity["id"],
             "severity": severity["name"],
+            "status_id": 1,  # StatusID.New for newly discovered SARIF findings
+            "status": "New",
             "metadata": {
                 "product": tool_metadata,
                 "version": self.OCSF_VERSION,
@@ -203,7 +205,6 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         # Add optional fields if present
         if vulnerabilities:
             ocsf_finding["vulnerabilities"] = [vulnerabilities]
-
         if enrichments:
             ocsf_finding["enrichments"] = enrichments
 
@@ -222,7 +223,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         tool = run.get("tool", {}).get("driver", {})
 
         metadata = {
-            "name": tool.get("name", "Unknown"),
+            "name": tool.get("name", self.UNKNOWN),
         }
 
         # Try semanticVersion first, fallback to version
@@ -280,7 +281,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             return automation["guid"]
 
         # Fallback: generate from tool + timestamp
-        tool_name = run.get("tool", {}).get("driver", {}).get("name", "unknown")
+        tool_name = run.get("tool", {}).get("driver", {}).get("name", self.UNKNOWN)
         invocations = run.get("invocations", [])
         for invocation in invocations:
             start_time = invocation.get("startTimeUtc")
@@ -337,7 +338,7 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         Returns:
             finding_info dictionary
         """
-        rule_id = result.get("ruleId", "Unknown")
+        rule_id = result.get("ruleId", self.UNKNOWN)
 
         # Build title from ruleId + optional shortDescription
         title = rule_id
@@ -372,14 +373,17 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
         Note: OCSF uses "vulnerabilities" to represent both CVEs and CWEs. This method
         extracts CWE and location information to populate the OCSF vulnerabilities array.
 
+        Returns None if no meaningful vulnerability information is available (no real CWE and no location).
+
         Args:
             result: SARIF result object
             rules_lookup: Dictionary mapping rule IDs to rule objects
 
         Returns:
-            Vulnerability dictionary or None if no relevant data
+            Vulnerability dictionary with CWE and/or location info, or None if no meaningful data
         """
         vulnerability = {}
+        has_real_cwe = False
 
         # Extract CWE
         rule_id = result.get("ruleId")
@@ -397,8 +401,10 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             if isinstance(cwe, list):
                 cwe = ", ".join(str(c) for c in cwe)
             vulnerability["cwe"] = {"uid": str(cwe)}
+            has_real_cwe = True
 
         # Extract affected_code
+        has_location = False
         locations = result.get("locations", [])
         if locations:
             physical_location = locations[0].get("physicalLocation", {})
@@ -412,15 +418,32 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             if file_path or start_line or end_line:
                 affected_code = {}
                 if file_path:
-                    affected_code["file"] = file_path
+                    # OCSF 1.5.0 requires file.type_id and file.name; path is recommended
+                    affected_code["file"] = {
+                        "name": file_path.split("/")[-1] if file_path else self.UNKNOWN,
+                        "path": file_path,
+                        "type_id": self.FILE_TYPE_REGULAR,
+                    }
                 if start_line:
                     affected_code["start_line"] = start_line
                 if end_line:
                     affected_code["end_line"] = end_line
 
-                vulnerability["affected_code"] = affected_code
+                vulnerability["affected_code"] = [affected_code]
+                has_location = True
 
-        return vulnerability if vulnerability else None
+        # Only return vulnerability if we have real CWE or location information
+        if not has_real_cwe and not has_location:
+            logger.debug(f"No CWE/CVE or location found for result '{rule_id}', skipping vulnerability")
+            return None
+
+        # If we have location but no CWE, add CWE: UNKNOWN to satisfy OCSF schema requirement
+        # (vulnerability must have at least one identifier: cwe, cve, or advisory)
+        if has_location and not has_real_cwe:
+            vulnerability["cwe"] = {"uid": self.UNKNOWN}
+            logger.debug(f"No CWE/CVE found but location present for '{rule_id}', setting CWE to {self.UNKNOWN}")
+
+        return vulnerability
 
     def _extract_enrichments(self, result: dict[str, Any]) -> list[dict[str, Any]] | None:
         """

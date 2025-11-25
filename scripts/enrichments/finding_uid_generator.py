@@ -315,6 +315,7 @@ class FindingUIDGenerator(EnrichmentPlugin):
         # Add uid_generation enrichment
         uid_metadata = {
             "name": "uid_generation",
+            "value": f"UID generated using {method} method",
             "data": {"method": method, "version": version, "algorithm": "sha256"},
         }
 

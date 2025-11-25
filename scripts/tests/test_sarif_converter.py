@@ -61,7 +61,7 @@ class TestSARIFConverterMethods:
                 {"name": "TestTool", "version": "1.2.3"},
             ),
             ("missing_version", {"tool": {"driver": {"name": "TestTool"}}}, {"name": "TestTool"}),
-            ("missing_name_defaults_to_unknown", {"tool": {"driver": {}}}, {"name": "Unknown"}),
+            ("missing_name_defaults_to_unknown", {"tool": {"driver": {}}}, {"name": "UNKNOWN"}),
         ],
     )
     def test_extract_tool_metadata(self, converter, scenario, run, expected_metadata):
@@ -116,9 +116,11 @@ class TestSARIFConverterMethods:
 
         assert vulnerability is not None
         assert vulnerability["cwe"]["uid"] == "CWE-457"
-        assert vulnerability["affected_code"]["file"] == "src/main.c"
-        assert vulnerability["affected_code"]["start_line"] == 42
-        assert vulnerability["affected_code"]["end_line"] == 42
+        assert vulnerability["affected_code"][0]["file"]["name"] == "main.c"
+        assert vulnerability["affected_code"][0]["file"]["path"] == "src/main.c"
+        assert vulnerability["affected_code"][0]["file"]["type_id"] == 1
+        assert vulnerability["affected_code"][0]["start_line"] == 42
+        assert vulnerability["affected_code"][0]["end_line"] == 42
 
     def test_extract_vulnerabilities_cwe_from_rule(self, converter):
         """Test vulnerability extraction with CWE from rule properties."""
@@ -137,12 +139,32 @@ class TestSARIFConverterMethods:
         assert vulnerability is not None
         assert vulnerability["cwe"]["uid"] == "CWE-457, CWE-789"
 
-    def test_extract_vulnerabilities_empty(self, converter):
-        """Test vulnerability extraction returns None when no data."""
+    def test_extract_vulnerabilities_returns_none_without_data(self, converter):
+        """Test vulnerability extraction returns None when no CWE/CVE or location found."""
         result = {"ruleId": "TEST-001"}
         vulnerability = converter._extract_vulnerabilities(result, {})
 
         assert vulnerability is None
+
+    def test_extract_vulnerabilities_with_location_but_no_cwe(self, converter):
+        """Test vulnerability extraction sets CWE to UNKNOWN when location present but no CWE."""
+        result = {
+            "ruleId": "TEST-001",
+            "locations": [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {"uri": "src/main.c"},
+                        "region": {"startLine": 42, "endLine": 43},
+                    }
+                }
+            ],
+        }
+        vulnerability = converter._extract_vulnerabilities(result, {})
+
+        assert vulnerability is not None
+        assert vulnerability["cwe"]["uid"] == "UNKNOWN"  # CWE: UNKNOWN added to satisfy schema
+        assert "affected_code" in vulnerability
+        assert vulnerability["affected_code"][0]["file"]["path"] == "src/main.c"
 
     def test_extract_enrichments_with_fingerprints(self, converter):
         """Test enrichment extraction with fingerprints."""
@@ -288,6 +310,12 @@ class TestSARIFIntegration(unittest.TestCase):
         self.assertIn("finding_info", findings[0])
         self.assertIn("metadata", findings[0])
 
+        # Verify status fields are set correctly
+        self.assertIn("status", findings[0])
+        self.assertEqual(findings[0]["status"], "New")
+        self.assertIn("status_id", findings[0])
+        self.assertEqual(findings[0]["status_id"], 1)  # StatusID.New = 1
+
     def test_conversion_with_enrichments(self):
         """Test conversion with enrichments applied."""
         # Discover and instantiate enrichments
@@ -379,7 +407,14 @@ class TestSARIFIntegration(unittest.TestCase):
                 {
                     "tool": {"driver": {"name": "TestTool", "version": "1.0.0"}},
                     "automationDetails": {"id": "CI-BUILD-12345"},
-                    "results": [{"ruleId": "TEST-001", "level": "error", "message": {"text": "Test finding"}}],
+                    "results": [
+                        {
+                            "ruleId": "TEST-001",
+                            "level": "error",
+                            "message": {"text": "Test finding"},
+                            "properties": {"cwe": "CWE-123"},
+                        }
+                    ],
                 }
             ],
         }
