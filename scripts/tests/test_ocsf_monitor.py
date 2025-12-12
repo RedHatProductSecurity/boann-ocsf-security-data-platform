@@ -530,3 +530,58 @@ def test_ocsf_monitor_cli_no_argument():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestOcsfMonitorGCSValidation:
+    """Test that ocsf_monitor validates GCS credentials when using GCS paths."""
+
+    @pytest.mark.parametrize(
+        "exception_class,exception_message",
+        [
+            ("DefaultCredentialsError", "No credentials found"),
+            ("RefreshError", "Token expired"),
+            ("Forbidden", "Access denied"),
+        ],
+    )
+    def test_monitor_fails_with_invalid_gcs_credentials(self, exception_class, exception_message):
+        """Test that OCSF monitor exits when GCS credentials are invalid."""
+        from google.api_core.exceptions import Forbidden
+        from google.auth.exceptions import DefaultCredentialsError, RefreshError
+
+        exception_map = {
+            "DefaultCredentialsError": DefaultCredentialsError,
+            "RefreshError": RefreshError,
+            "Forbidden": Forbidden,
+        }
+        exception_cls = exception_map[exception_class]
+
+        # Import ocsf_monitor module
+        import ocsf_monitor
+
+        # Mock DATABASE_URL to ensure OCSFIngestor can initialize
+        with patch.dict(os.environ, {"DATABASE_URL": "postgresql://user:pass@localhost/test"}):
+            with patch("helpers.gcs_utils.init") as mock_init:
+                mock_init.side_effect = exception_cls(exception_message)
+
+                # Simulate command-line arguments with GCS paths
+                # This is required because the CLI class uses argparse which reads from sys.argv
+                with patch(
+                    "sys.argv",
+                    [
+                        "ocsf_monitor.py",
+                        "--source-folder",
+                        "gs://test-bucket/source/",
+                        "--processed-folder",
+                        "gs://test-bucket/processed/",
+                        "--failed-folder",
+                        "gs://test-bucket/failed/",
+                    ],
+                ):
+                    cli = ocsf_monitor.MonitorCLI()
+
+                    # Should return exit code 1 due to GCS credential failure
+                    exit_code = cli.run()
+                    assert exit_code == 1
+
+                    # Verify that init() was called, confirming the exception was raised
+                    mock_init.assert_called_once_with("test-bucket")

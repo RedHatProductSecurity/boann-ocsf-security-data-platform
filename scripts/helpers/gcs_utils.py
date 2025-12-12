@@ -23,8 +23,22 @@ class _GCSHandler:
     """
 
     def __init__(self, bucket_name: str):
-        """Initializes the GCS client and bucket."""
+        """
+        Initializes the GCS client and bucket.
+
+        Validates credentials by checking bucket existence.
+        This ensures auth errors are caught early rather than during operations.
+
+        Raises:
+            ImportError: If google-cloud-storage is not installed
+            DefaultCredentialsError: If no valid credentials can be found
+            RefreshError: If credentials are invalid or expired
+            Forbidden: If credentials don't have access to the bucket
+            NotFound: If bucket doesn't exist
+        """
         try:
+            from google.api_core import exceptions as gcs_exceptions
+            from google.auth.exceptions import DefaultCredentialsError, RefreshError
             from google.cloud import storage
         except ImportError as e:
             raise ImportError(
@@ -33,9 +47,25 @@ class _GCSHandler:
             ) from e
 
         self.storage = storage
-        self.client = storage.Client()
-        self.bucket = self.client.bucket(bucket_name)
-        logger.info(f"GCS client initialized for bucket: gs://{self.bucket.name}")
+
+        try:
+            self.client = storage.Client()
+            self.bucket = self.client.bucket(bucket_name)
+
+            # Validate credentials by checking if bucket exists
+            # This triggers auth errors early instead of waiting for first operation
+            self.bucket.exists()
+
+            logger.info(f"GCS client initialized for bucket: gs://{self.bucket.name}")
+        except (DefaultCredentialsError, RefreshError) as e:
+            logger.critical(f"GCS authentication failed: {e}")
+            raise
+        except gcs_exceptions.Forbidden as e:
+            logger.critical(f"GCS access denied to bucket '{bucket_name}': {e}")
+            raise
+        except gcs_exceptions.NotFound as e:
+            logger.critical(f"GCS bucket '{bucket_name}' not found: {e}")
+            raise
 
     def get(self, path: str) -> bytes:
         """Retrieves file content from the bucket."""
@@ -110,6 +140,30 @@ class _GCSHandler:
 
 # The single, module-level instance. It starts as None.
 _handler = None
+
+
+def extract_bucket_name(gcs_path: str) -> str:
+    """
+    Extract bucket name from a GCS path.
+
+    Args:
+        gcs_path: GCS path in format gs://bucket-name/path/to/file
+
+    Returns:
+        Bucket name
+
+    Raises:
+        ValueError: If path doesn't start with gs://
+
+    Example:
+        >>> extract_bucket_name("gs://my-bucket/path/to/file")
+        'my-bucket'
+    """
+    if not gcs_path.startswith("gs://"):
+        raise ValueError(f"Invalid GCS path: {gcs_path} (must start with gs://)")
+
+    # Remove gs:// prefix and get first path component (bucket name)
+    return gcs_path[5:].split("/")[0]
 
 
 def init(bucket_name: str):
