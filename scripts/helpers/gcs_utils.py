@@ -52,9 +52,10 @@ class _GCSHandler:
             self.client = storage.Client()
             self.bucket = self.client.bucket(bucket_name)
 
-            # Validate credentials by checking if bucket exists
-            # This triggers auth errors early instead of waiting for first operation
-            self.bucket.exists()
+            # Validate credentials by listing blobs (requires storage.objects.list)
+            # This validates auth and permissions without requiring storage.buckets.get
+            # which may not be granted to least-privilege service accounts
+            list(self.bucket.list_blobs(max_results=1))
 
             logger.info(f"GCS client initialized for bucket: gs://{self.bucket.name}")
         except (DefaultCredentialsError, RefreshError) as e:

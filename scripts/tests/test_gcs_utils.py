@@ -55,9 +55,9 @@ class TestGcsUtilsAuthenticationBehavior:
         "exception_class,exception_message,mock_location",
         [
             ("DefaultCredentialsError", "Could not automatically determine credentials", "client"),
-            ("RefreshError", "Token has been expired or revoked", "bucket_exists"),
-            ("Forbidden", "Permission denied", "bucket_exists"),
-            ("NotFound", "Bucket not found", "bucket_exists"),
+            ("RefreshError", "Token has been expired or revoked", "list_blobs"),
+            ("Forbidden", "Permission denied", "list_blobs"),
+            ("NotFound", "Bucket not found", "list_blobs"),
         ],
     )
     def test_initialization_fails_with_auth_errors(self, exception_class, exception_message, mock_location):
@@ -80,10 +80,10 @@ class TestGcsUtilsAuthenticationBehavior:
                 # Exception raised during Client() initialization
                 mock_client.side_effect = exception_cls(exception_message)
             else:
-                # Exception raised during bucket.exists()
+                # Exception raised during list_blobs() (requires storage.objects.list)
                 mock_client_instance = mock_client.return_value
                 mock_bucket = mock_client_instance.bucket.return_value
-                mock_bucket.exists.side_effect = exception_cls(exception_message)
+                mock_bucket.list_blobs.side_effect = exception_cls(exception_message)
 
             with pytest.raises(exception_cls):
                 gcs_utils._GCSHandler("test-bucket")
@@ -95,7 +95,7 @@ class TestGcsUtilsAuthenticationBehavior:
         with patch("google.cloud.storage.Client") as mock_client:
             mock_client_instance = mock_client.return_value
             mock_bucket = mock_client_instance.bucket.return_value
-            mock_bucket.exists.return_value = True
+            mock_bucket.list_blobs.return_value = iter([])  # Empty iterator (no blobs)
             mock_bucket.name = "test-bucket"
 
             # Should not raise any exception
