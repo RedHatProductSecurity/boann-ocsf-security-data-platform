@@ -130,7 +130,14 @@ class SARIFToOCSFConverter(BaseOCSFConverter):
             rules_lookup = self._build_rules_lookup(run)
 
             # Process each result (finding)
-            for result in run.get("results", []):
+            # Some SARIF producers emit `"results": null` (or other non-list types); treat that as "no results"
+            # instead of crashing on `for result in None`.
+            results = run.get("results") or []
+            if not isinstance(results, list):
+                logger.warning("SARIF run 'results' is not a list; skipping this run")
+                results = []
+
+            for result in results:
                 try:
                     ocsf_finding = self._convert_result(result, tool_metadata, created_time, rules_lookup)
 
