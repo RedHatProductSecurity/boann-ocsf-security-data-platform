@@ -256,7 +256,8 @@ Best for consistent, isolated development:
 
 ```bash
 # Start the environment
-../scripts/run_podman.sh
+# Run from the repository root (the script lives in ./scripts/)
+./scripts/run_podman.sh
 
 # Access the container
 podman exec -it boann-app bash
@@ -507,4 +508,3 @@ See the [AGENTS.md](../AGENTS.md) file for comprehensive testing guidelines, inc
 - Open a new issue for bugs or feature requests
 
 Thank you for contributing!
-

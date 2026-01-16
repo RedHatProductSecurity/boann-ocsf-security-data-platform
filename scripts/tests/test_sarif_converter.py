@@ -236,6 +236,29 @@ class TestSARIFConverterMethods:
 
         assert "not found" in str(exc_info.value)
 
+    def test_convert_file_handles_null_results(self, converter):
+        """Test that a run with results=null does not crash and produces no findings."""
+        sarif_content = {
+            "version": "2.1.0",
+            "runs": [
+                {
+                    "tool": {"driver": {"name": "TestTool", "version": "1.0.0"}},
+                    "results": None,
+                }
+            ],
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".sarif", delete=False) as f:
+            sarif_file = f.name
+            json.dump(sarif_content, f)
+
+        try:
+            findings = converter.convert_file(sarif_file)
+            assert findings == []
+        finally:
+            if Path(sarif_file).exists():
+                Path(sarif_file).unlink()
+
     def test_extract_created_time_with_invalid_timestamp(self, converter):
         """Test created time extraction with invalid timestamp format."""
         run = {"invocations": [{"startTimeUtc": "invalid-timestamp-format"}]}
